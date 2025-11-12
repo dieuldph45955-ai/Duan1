@@ -14,8 +14,20 @@ app.use(express.urlencoded({ extended: true }));
 
 const authRouter = require("./routes/auth");
 const productRouter = require("./routes/products");
+const categoryRouter = require("./routes/category");
+const orderRouter = require("./routes/order");
+const reviewRouter = require("./routes/review");
+const memberRouter = require('./routes/user');
+const adminRouter = require('./routes/admin');
+const statsRouter = require('./routes/stats');
 app.use("/api", authRouter);
 app.use("/api", productRouter);
+app.use("/api", categoryRouter);
+app.use("/api", orderRouter);
+app.use("/api", reviewRouter);
+app.use("/api", memberRouter);
+app.use("/api", adminRouter);
+app.use("/api", statsRouter);
 mongoose.connect(
   process.env.MONGODB_URI || "mongodb://localhost:27017/clothing_store"
 );

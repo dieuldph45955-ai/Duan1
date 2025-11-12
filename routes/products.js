@@ -2,7 +2,8 @@ const express = require("express");
 const router = express.Router();
 const Product = require("../model/product");
 const authenticateToken = require("../middleware/auth");
-
+const upload = require("../middleware/upload");
+const checkAdmin = require("../middleware/checkAdmin");
 // Lấy tất cả sản phẩm (có phân trang, lọc)
 router.get("/products", async (req, res) => {
   try {
@@ -42,37 +43,64 @@ router.get("/products/:id", async (req, res) => {
   }
 });
 // Thêm sản phẩm (Admin)
-router.post("/products", authenticateToken, checkAdmin, async (req, res) => {
-  try {
-    const { name, description, price, category, images, sizes } = req.body;
-    const product = new Product({
-      name,
-      description,
-      price,
-      category,
-      images,
-      sizes,
-    });
-    await product.save();
-    res.status(201).json(product);
-  } catch (err) {
-    res.status(500).json({ message: err.message });
+router.post(
+  "/products",
+  authenticateToken,
+  checkAdmin,
+  upload.array("images"),
+  async (req, res) => {
+    try {
+      const { name, description, price, category, sizes } = req.body;
+      const imagePaths = req.files.map((file) => `/uploads/${file.filename}`);
+
+      const product = new Product({
+        name,
+        description,
+        price,
+        category,
+        sizes,
+        images: imagePaths,
+      });
+
+      await product.save();
+      res.status(201).json(product);
+    } catch (err) {
+      res.status(500).json({ message: err.message });
+    }
   }
-});
-// update
-router.put("/products/:id", authenticateToken, checkAdmin, async (req, res) => {
-  try {
-    const product = await Product.findByIdAndUpdate(req.params.id, req.body, {
-      new: true,
-    });
-    if (!product) return res.status(404).json({ message: "Product not found" });
-    res.json(product);
-  } catch (err) {
-    res.status(500).json({ message: err.message });
+);
+// update(admin)
+router.put(
+  "/products/:id",
+  authenticateToken,
+  checkAdmin,
+  upload.array("images", 5),
+  async (req, res) => {
+    try {
+      const updateData = req.body;
+
+      if (req.files && req.files.length > 0) {
+        updateData.images = req.files.map(
+          (file) => `/uploads/${file.filename}`
+        );
+      }
+
+      const product = await Product.findByIdAndUpdate(
+        req.params.id,
+        updateData,
+        { new: true }
+      );
+
+      if (!product)
+        return res.status(404).json({ message: "Product not found" });
+      res.json(product);
+    } catch (err) {
+      res.status(500).json({ message: err.message });
+    }
   }
-});
-// xoá
-app.delete(
+);
+// xoá(admin)
+router.delete(
   "/products/:id",
   authenticateToken,
   checkAdmin,
