@@ -5,16 +5,34 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.widget.*;
 import java.util.regex.Pattern;
+import com.example.myapplication.Utils.DatabaseHelper;
+import com.example.myapplication.Utils.SharedPrefManager;
+import com.example.myapplication.Models.User;
 
 public class MainActivity extends AppCompatActivity {
     EditText edtEmail, edtPassword;
     Button btnLogin;
     TextView tvRegister, tvForgot;
+    DatabaseHelper dbHelper;
+    SharedPrefManager sharedPrefManager;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        
+        sharedPrefManager = new SharedPrefManager(this);
+        
+        // Kiểm tra nếu đã đăng nhập thì chuyển đến HomeActivity
+        if (sharedPrefManager.isLoggedIn()) {
+            Intent intent = new Intent(MainActivity.this, HomeActivity.class);
+            startActivity(intent);
+            finish();
+            return;
+        }
+        
         setContentView(R.layout.activity_main);
+        
+        dbHelper = new DatabaseHelper(this);
 
         edtEmail = findViewById(R.id.edtEmail);
         edtPassword = findViewById(R.id.edtPassword);
@@ -46,7 +64,20 @@ public class MainActivity extends AppCompatActivity {
                 return;
             }
 
-            Toast.makeText(this, "Đăng nhập thành công", Toast.LENGTH_SHORT).show();
+            // Kiểm tra đăng nhập
+            User user = dbHelper.loginUser(email, password);
+            if (user != null) {
+                // Lưu thông tin user vào SharedPreferences
+                sharedPrefManager.saveUser(user);
+                Toast.makeText(this, "Đăng nhập thành công", Toast.LENGTH_SHORT).show();
+                
+                // Chuyển đến HomeActivity
+                Intent intent = new Intent(MainActivity.this, HomeActivity.class);
+                startActivity(intent);
+                finish();
+            } else {
+                Toast.makeText(this, "Email hoặc mật khẩu không đúng", Toast.LENGTH_SHORT).show();
+            }
         });
 
         tvRegister.setOnClickListener(v -> {
@@ -59,6 +90,7 @@ public class MainActivity extends AppCompatActivity {
             startActivity(intent);
         });
     }
+    
     private boolean isValidEmail(String email) {
         Pattern pattern = Pattern.compile("^[\\w._%+-]+@[\\w.-]+\\.[a-zA-Z]{2,}$");
         return pattern.matcher(email).matches();
