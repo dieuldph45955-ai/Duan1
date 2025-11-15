@@ -15,7 +15,7 @@ router.get("/categories", async (req, res) => {
 });
 
 // Thêm danh mục (Admin)
-app.post(
+router.post(
   "/addcategories",
   authenticateToken,
   checkAdmin,
@@ -39,7 +39,7 @@ app.post(
 );
 
 // Cập nhật danh mục (Admin)
-app.put(
+router.put(
   "/categories/:id",
   authenticateToken,
   checkAdmin,

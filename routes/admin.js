@@ -12,7 +12,7 @@ router.get("/admin/users", authenticateToken, checkAdmin, async (req, res) => {
   }
 });
 // khoá/ mở tài khoản
-app.put(
+router.put(
   "/admin/users/:id/status",
   authenticateToken,
   checkAdmin,

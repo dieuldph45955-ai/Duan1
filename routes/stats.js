@@ -3,7 +3,7 @@ const Product = require("../model/product");
 const Order = require("../model/order");
 
 // lấy thống kê báo cáo
-app.get("/api/admin/stats", authenticateToken, checkAdmin, async (req, res) => {
+router.get("/api/admin/stats", authenticateToken, checkAdmin, async (req, res) => {
   try {
     const totalUsers = await User.countDocuments();
     const totalProducts = await Product.countDocuments();
