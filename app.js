@@ -9,17 +9,18 @@ dotenv.config();
 const app = express();
 
 app.use(cors());
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: "50mb" }));
+app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 
 const authRouter = require("./routes/auth");
 const productRouter = require("./routes/products");
 const categoryRouter = require("./routes/category");
 const orderRouter = require("./routes/order");
 const reviewRouter = require("./routes/review");
-const memberRouter = require('./routes/user');
-const adminRouter = require('./routes/admin');
-const statsRouter = require('./routes/stats');
+const memberRouter = require("./routes/user");
+const adminRouter = require("./routes/admin");
+const statsRouter = require("./routes/stats");
+
 app.use("/api", authRouter);
 app.use("/api", productRouter);
 app.use("/api", categoryRouter);

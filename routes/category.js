@@ -3,6 +3,7 @@ const router = express.Router();
 const fs = require("fs");
 const Category = require("../model/category");
 const { authenticateToken, checkAdmin } = require("../middleware/auth");
+const upload = require("../middleware/upload");
 
 // lấy tất cả danh mục
 router.get("/categories", async (req, res) => {
@@ -19,6 +20,7 @@ router.post(
   "/addcategories",
   authenticateToken,
   checkAdmin,
+  upload.single("image"),
   async (req, res) => {
     try {
       const { name, description } = req.body;
@@ -43,6 +45,7 @@ router.put(
   "/categories/:id",
   authenticateToken,
   checkAdmin,
+  upload.single("image"),
   async (req, res) => {
     try {
       const { name, description } = req.body;
