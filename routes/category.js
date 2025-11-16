@@ -1,5 +1,6 @@
 const express = require("express");
 const router = express.Router();
+const fs = require("fs");
 const Category = require("../model/category");
 const authenticateToken = require("../middleware/auth");
 const checkAdmin = require("../middleware/checkAdmin");
@@ -15,7 +16,7 @@ router.get("/categories", async (req, res) => {
 });
 
 // Thêm danh mục (Admin)
-app.post(
+router.post(
   "/addcategories",
   authenticateToken,
   checkAdmin,
@@ -39,7 +40,7 @@ app.post(
 );
 
 // Cập nhật danh mục (Admin)
-app.put(
+router.put(
   "/categories/:id",
   authenticateToken,
   checkAdmin,
