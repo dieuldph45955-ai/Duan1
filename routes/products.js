@@ -1,9 +1,8 @@
 const express = require("express");
 const router = express.Router();
 const Product = require("../model/product");
-const authenticateToken = require("../middleware/auth");
+const { authenticateToken, checkAdmin } = require("../middleware/auth");
 const upload = require("../middleware/upload");
-const checkAdmin = require("../middleware/checkAdmin");
 // Lấy tất cả sản phẩm (có phân trang, lọc)
 router.get("/products", async (req, res) => {
   try {
