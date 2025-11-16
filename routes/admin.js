@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const User = require("../model/user");
-const authenticateToken = require("../middleware/auth");
+const { authenticateToken, checkAdmin } = require("../middleware/auth");
 // lấy tất cả tài khoản admin
 router.get("/admin/users", authenticateToken, checkAdmin, async (req, res) => {
   try {
@@ -12,7 +12,7 @@ router.get("/admin/users", authenticateToken, checkAdmin, async (req, res) => {
   }
 });
 // khoá/ mở tài khoản
-app.put(
+router.put(
   "/admin/users/:id/status",
   authenticateToken,
   checkAdmin,

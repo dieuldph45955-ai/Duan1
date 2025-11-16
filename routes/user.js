@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const User = require("../model/user");
-const authenticateToken = require("../middleware/auth");
+const { authenticateToken } = require("../middleware/auth");
 
 // lấy thông tin user
 router.get("/users/profile", authenticateToken, async (req, res) => {

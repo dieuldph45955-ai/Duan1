@@ -1,8 +1,8 @@
 const express = require("express");
 const router = express.Router();
 const Order = require("../model/order");
-const authenticateToken = require("../middleware/auth");
-const checkAdmin = require("../middleware/checkAdmin");
+const Product = require("../model/product");
+const { authenticateToken, checkAdmin } = require("../middleware/auth");
 
 // thêm đơn hàng
 

@@ -1,6 +1,8 @@
 const express = require("express");
 const router = express.Router();
 const Review = require("../model/Review");
+const Product = require("../model/product");
+const { authenticateToken } = require("../middleware/auth");
 // thêm review
 router.post("/reviews", authenticateToken, async (req, res) => {
   try {

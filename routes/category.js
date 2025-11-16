@@ -2,8 +2,7 @@ const express = require("express");
 const router = express.Router();
 const fs = require("fs");
 const Category = require("../model/category");
-const authenticateToken = require("../middleware/auth");
-const checkAdmin = require("../middleware/checkAdmin");
+const { authenticateToken, checkAdmin } = require("../middleware/auth");
 
 // lấy tất cả danh mục
 router.get("/categories", async (req, res) => {
