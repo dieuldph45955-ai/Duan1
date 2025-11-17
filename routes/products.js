@@ -3,10 +3,10 @@ const router = express.Router();
 const Product = require("../model/product");
 const { authenticateToken, checkAdmin } = require("../middleware/auth");
 const upload = require("../middleware/upload");
-// Lấy tất cả sản phẩm (tìm kiếm + lọc + phân trang)
-router.get("/products", async (req, res) => {
+// Lấy tất cả sản phẩm (tìm kiếm + lọc)
+router.get("/getAllProducts", async (req, res) => {
   try {
-    const { category, search, page = 1, limit = 12 } = req.query;
+    const { category, search } = req.query;
 
     const filter = {};
 
@@ -15,31 +15,22 @@ router.get("/products", async (req, res) => {
       filter.category = category;
     }
 
-    // Tìm kiếm theo tên
+    // Tìm kiếm theo tên sản phẩm
     if (search) {
-      filter.name = { $regex: search, $options: "i" };
+      filter.name = { $regex: search, $options: "i" }; 
     }
 
-    // Query DB
     const products = await Product.find(filter)
       .populate("category")
       .populate("reviews")
-      .skip((page - 1) * limit)
-      .limit(Number(limit))
       .sort({ createdAt: -1 });
 
-    const total = await Product.countDocuments(filter);
-
-    res.json({
-      products,
-      total,
-      totalPages: Math.ceil(total / limit),
-      currentPage: Number(page),
-    });
-  } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.json(products);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
   }
 });
+
 // Lấy chi tiết sản phẩm
 router.get("/products/:id", async (req, res) => {
   try {
