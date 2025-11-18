@@ -3,6 +3,7 @@ const router = express.Router();
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const User = require("../model/user");
+const nodemailer = require("nodemailer");
 // đăng ký
 router.post("/register", async (req, res) => {
   try {
@@ -75,15 +76,49 @@ router.post("/forgot-password", async (req, res) => {
 
     if (!user) return res.status(404).json({ message: "User not found" });
 
-    // Tạo token reset (thực tế nên lưu vào DB và gửi email)
+    // Tạo token nội bộ
     const resetToken = jwt.sign(
       { id: user._id },
       process.env.JWT_SECRET || "TOKEN_SECRET",
-      { expiresIn: "1h" }
+      { expiresIn: "1d" }
     );
-    res.json({ message: "Reset token sent", resetToken });
+
+    user.resetToken = resetToken;
+    await user.save();
+
+    // Không gửi email, chỉ lưu token nội bộ
+    res.json({ message: "Ready to reset password" });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 });
+
+// reset password - nhập mật khẩu mới
+router.post("/reset-password", async (req, res) => {
+  try {
+    const { email, newPassword } = req.body;
+
+    if (!email || !newPassword) {
+      return res.status(400).json({ message: "Missing email or new password" });
+    }
+
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Hash mật khẩu mới
+    const bcrypt = require("bcryptjs");
+    const hashed = await bcrypt.hash(newPassword, 10);
+
+    user.password = hashed;
+    await user.save();
+
+    return res.json({ message: "Password reset successfully" });
+
+  } catch (err) {
+    return res.status(500).json({ message: "Server error: " + err.message });
+  }
+});
+
 module.exports = router;
