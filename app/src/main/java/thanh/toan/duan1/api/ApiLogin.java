@@ -18,6 +18,6 @@ public interface ApiLogin {
     // Quên mật khẩu
     @POST("forgot-password")
     Call<Map<String, Object>> forgotPassword(@Body Map<String, Object> body);
-    @POST("reset-password") //  reset mật khẩu
+    @POST("reset-password")
     Call<Map<String, Object>> resetPassword(@Body Map<String, Object> body);
 }

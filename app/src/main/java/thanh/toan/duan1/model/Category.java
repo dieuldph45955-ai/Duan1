@@ -1,60 +1,58 @@
 package thanh.toan.duan1.model;
 
-import java.time.OffsetDateTime;
-
 public class Category {
     private String id;
     private String name;
     private String description;
     private String image;
-    private OffsetDateTime createdAt;
+    private String createdAt;
     private Long v;
 
-    public String getID() {
+    public String getId() {
         return id;
     }
 
-    public void setID(String value) {
-        this.id = value;
+    public void setId(String id) {
+        this.id = id;
     }
 
     public String getName() {
         return name;
     }
 
-    public void setName(String value) {
-        this.name = value;
+    public void setName(String name) {
+        this.name = name;
     }
 
     public String getDescription() {
         return description;
     }
 
-    public void setDescription(String value) {
-        this.description = value;
+    public void setDescription(String description) {
+        this.description = description;
     }
 
     public String getImage() {
         return image;
     }
 
-    public void setImage(String value) {
-        this.image = value;
+    public void setImage(String image) {
+        this.image = image;
     }
 
-    public OffsetDateTime getCreatedAt() {
+    public String getCreatedAt() {
         return createdAt;
     }
 
-    public void setCreatedAt(OffsetDateTime value) {
-        this.createdAt = value;
+    public void setCreatedAt(String createdAt) {
+        this.createdAt = createdAt;
     }
 
     public Long getV() {
         return v;
     }
 
-    public void setV(Long value) {
-        this.v = value;
+    public void setV(Long v) {
+        this.v = v;
     }
 }

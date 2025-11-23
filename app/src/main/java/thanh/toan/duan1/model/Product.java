@@ -1,106 +1,108 @@
 package thanh.toan.duan1.model;
 
-import java.util.Date;
+import com.google.gson.annotations.SerializedName;
+
 import java.util.List;
 
 public class Product {
+    @SerializedName("_id")
     private String id;
     private String name;
     private String description;
-    private Long price;
-    private String category;
+    private Double price;
+    private Category category;
     private List<String> images;
     private List<Object> sizes;
-    private Long rating;
-    private List<String> reviews;
-    private Date createdAt;
+    private Double rating;
+    private List<Review> reviews;
+    private String createdAt;
     private Long v;
 
-    public String getID() {
+    public String getId() {
         return id;
     }
 
-    public void setID(String value) {
-        this.id = value;
+    public void setId(String id) {
+        this.id = id;
     }
 
     public String getName() {
         return name;
     }
 
-    public void setName(String value) {
-        this.name = value;
+    public void setName(String name) {
+        this.name = name;
     }
 
     public String getDescription() {
         return description;
     }
 
-    public void setDescription(String value) {
-        this.description = value;
+    public void setDescription(String description) {
+        this.description = description;
     }
 
-    public Long getPrice() {
+    public Double getPrice() {
         return price;
     }
 
-    public void setPrice(Long value) {
-        this.price = value;
+    public void setPrice(Double price) {
+        this.price = price;
     }
 
-    public String getCategory() {
+    public Category getCategory() {
         return category;
     }
 
-    public void setCategory(String value) {
-        this.category = value;
+    public void setCategory(Category category) {
+        this.category = category;
     }
 
     public List<String> getImages() {
         return images;
     }
 
-    public void setImages(List<String> value) {
-        this.images = value;
+    public void setImages(List<String> images) {
+        this.images = images;
     }
 
     public List<Object> getSizes() {
         return sizes;
     }
 
-    public void setSizes(List<Object> value) {
-        this.sizes = value;
+    public void setSizes(List<Object> sizes) {
+        this.sizes = sizes;
     }
 
-    public Long getRating() {
+    public Double getRating() {
         return rating;
     }
 
-    public void setRating(Long value) {
-        this.rating = value;
+    public void setRating(Double rating) {
+        this.rating = rating;
     }
 
-    public List<String> getReviews() {
+    public List<Review> getReviews() {
         return reviews;
     }
 
-    public void setReviews(List<String> value) {
-        this.reviews = value;
+    public void setReviews(List<Review> reviews) {
+        this.reviews = reviews;
     }
 
-    public Date getCreatedAt() {
+    public String getCreatedAt() {
         return createdAt;
     }
 
-    public void setCreatedAt(Date value) {
-        this.createdAt = value;
+    public void setCreatedAt(String createdAt) {
+        this.createdAt = createdAt;
     }
 
     public Long getV() {
         return v;
     }
 
-    public void setV(Long value) {
-        this.v = value;
+    public void setV(Long v) {
+        this.v = v;
     }
 }

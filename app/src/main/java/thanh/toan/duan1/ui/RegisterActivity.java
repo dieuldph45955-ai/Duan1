@@ -38,8 +38,7 @@ public class RegisterActivity extends AppCompatActivity {
         editConfirmPassword = findViewById(R.id.editTextConfirmPassword);
         btnRegister = findViewById(R.id.buttonRegister);
         tvLogin = findViewById(R.id.textViewLogin);
-
-        api = ApiService.getClient(this).create(ApiLogin.class);
+        api = ApiService.getApi(this).create(ApiLogin.class);
 
         btnRegister.setOnClickListener(v -> registerUser());
 
@@ -97,4 +96,3 @@ public class RegisterActivity extends AppCompatActivity {
         });
     }
 }
-

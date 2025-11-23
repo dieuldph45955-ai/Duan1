@@ -37,11 +37,11 @@ public class ForgotPasswordActivity extends AppCompatActivity {
         editEmail = findViewById(R.id.editTextEmail);
         editNewPassword = findViewById(R.id.editTextNewPassword);
         btnResetPassword = findViewById(R.id.buttonResetPassword);
-        btnSubmitNewPassword = findViewById(R.id.buttonSubmitNewPassword); // FIX QUAN TRỌNG
+        btnSubmitNewPassword = findViewById(R.id.buttonSubmitNewPassword);
         btnBack = findViewById(R.id.buttonBack);
         tvLogin = findViewById(R.id.textViewLogin);
 
-        api = ApiService.getClient(this).create(ApiLogin.class);
+        api = ApiService.getApi(this).create(ApiLogin.class);
 
 
         btnResetPassword.setOnClickListener(v -> initiateResetPassword());
