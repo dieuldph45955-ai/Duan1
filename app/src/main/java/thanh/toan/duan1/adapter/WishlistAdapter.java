@@ -1,8 +1,11 @@
 package thanh.toan.duan1.adapter;
 
+import android.content.Context;
+import android.content.Intent;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Button;
 import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.TextView;
@@ -12,102 +15,104 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.bumptech.glide.Glide;
 
-import java.text.DecimalFormat;
+import java.text.NumberFormat;
 import java.util.List;
+import java.util.Locale;
 
 import thanh.toan.duan1.R;
 import thanh.toan.duan1.model.Product;
+import thanh.toan.duan1.ui.ProductDetailActivity;
 
 public class WishlistAdapter extends RecyclerView.Adapter<WishlistAdapter.WishlistViewHolder> {
 
-    private List<Product> wishlistProducts;
-    private OnRemoveClickListener onRemoveClickListener;
-    private OnAddToCartClickListener onAddToCartClickListener;
-
-    public interface OnRemoveClickListener {
-        void onRemoveClick(String productId);
+    public interface WishlistActionListener {
+        void onRemove(Product product, int position);
     }
 
-    public interface OnAddToCartClickListener {
-        void onAddToCartClick(String productId);
-    }
+    private final Context context;
+    private final List<Product> products;
+    private final WishlistActionListener listener;
+    private final NumberFormat currencyFormat = NumberFormat.getInstance(new Locale("vi", "VN"));
 
-    public WishlistAdapter(
-            List<Product> wishlistProducts,
-            OnRemoveClickListener onRemoveClickListener,
-            OnAddToCartClickListener onAddToCartClickListener
-    ) {
-        this.wishlistProducts = wishlistProducts;
-        this.onRemoveClickListener = onRemoveClickListener;
-        this.onAddToCartClickListener = onAddToCartClickListener;
+    public WishlistAdapter(Context context, List<Product> products, WishlistActionListener listener) {
+        this.context = context;
+        this.products = products;
+        this.listener = listener;
     }
 
     @NonNull
     @Override
     public WishlistViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-        View view = LayoutInflater
-                .from(parent.getContext())
-                .inflate(R.layout.item_wishlist, parent, false);
+        View view = LayoutInflater.from(context).inflate(R.layout.item_wishlist_product, parent, false);
         return new WishlistViewHolder(view);
     }
 
     @Override
     public void onBindViewHolder(@NonNull WishlistViewHolder holder, int position) {
-        Product product = wishlistProducts.get(position);
-        holder.bind(product);
+        Product product = products.get(position);
+
+        holder.name.setText(product.getName());
+        holder.price.setText(formatCurrency(product.getPrice()));
+
+        if (product.getCategory() != null && product.getCategory().getName() != null) {
+            holder.category.setText(product.getCategory().getName());
+        } else {
+            holder.category.setText("Không có danh mục");
+        }
+
+        if (product.getImages() != null && !product.getImages().isEmpty()) {
+            Glide.with(context)
+                    .load(product.getImages().get(0))
+                    .placeholder(R.drawable.ic_launcher_background)
+                    .into(holder.image);
+        } else {
+            holder.image.setImageResource(R.drawable.ic_launcher_background);
+        }
+
+        holder.btnViewDetail.setOnClickListener(v -> openProductDetail(product));
+        holder.itemView.setOnClickListener(v -> openProductDetail(product));
+
+        holder.btnRemove.setOnClickListener(v -> {
+            if (listener != null) {
+                listener.onRemove(product, holder.getAdapterPosition());
+            }
+        });
     }
 
     @Override
     public int getItemCount() {
-        return wishlistProducts.size();
+        return products.size();
     }
 
-    public void updateList(List<Product> newList) {
-        this.wishlistProducts = newList;
-        notifyDataSetChanged();
+    private void openProductDetail(Product product) {
+        Intent intent = new Intent(context, ProductDetailActivity.class);
+        intent.putExtra("productId", product.getId());
+        context.startActivity(intent);
     }
 
-    public class WishlistViewHolder extends RecyclerView.ViewHolder {
-
-        private ImageView productImage;
-        private TextView productName;
-        private TextView productPrice;
-        private ImageButton removeButton;
-        private ImageButton addToCartButton;
-
-        public WishlistViewHolder(@NonNull View itemView) {
-            super(itemView);
-
-            productImage = itemView.findViewById(R.id.wishlist_product_image);
-            productName = itemView.findViewById(R.id.wishlist_product_name);
-            productPrice = itemView.findViewById(R.id.wishlist_product_price);
-            removeButton = itemView.findViewById(R.id.remove_from_wishlist_button);
-            addToCartButton = itemView.findViewById(R.id.add_to_cart_button);
+    private String formatCurrency(Double price) {
+        if (price == null) {
+            return "0 đ";
         }
+        return currencyFormat.format(price) + " đ";
+    }
 
-        public void bind(Product product) {
-            productName.setText(product.getName());
+    static class WishlistViewHolder extends RecyclerView.ViewHolder {
+        ImageView image;
+        TextView name;
+        TextView price;
+        TextView category;
+        Button btnViewDetail;
+        ImageButton btnRemove;
 
-            DecimalFormat decimalFormat = new DecimalFormat("#,##0");
-            productPrice.setText(
-                    decimalFormat.format(product.getPrice()) + " VND"
-            );
-
-            // Load image using Glide
-            if (product.getImages() != null && !product.getImages().isEmpty()) {
-                Glide.with(itemView.getContext())
-                        .load(product.getImages().get(0))
-                        .placeholder(R.drawable.ic_launcher_background)
-                        .into(productImage);
-            }
-
-            removeButton.setOnClickListener(v -> {
-                onRemoveClickListener.onRemoveClick(product.getId());
-            });
-
-            addToCartButton.setOnClickListener(v -> {
-                onAddToCartClickListener.onAddToCartClick(product.getId());
-            });
+        WishlistViewHolder(@NonNull View itemView) {
+            super(itemView);
+            image = itemView.findViewById(R.id.product_image);
+            name = itemView.findViewById(R.id.product_name);
+            price = itemView.findViewById(R.id.product_price);
+            category = itemView.findViewById(R.id.product_category);
+            btnViewDetail = itemView.findViewById(R.id.btn_view_detail);
+            btnRemove = itemView.findViewById(R.id.btn_remove);
         }
     }
 }

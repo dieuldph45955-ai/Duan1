@@ -20,6 +20,8 @@ import thanh.toan.duan1.fragment.ProfileFragment;
 import thanh.toan.duan1.fragment.WishlistFragment;
 
 public class MainActivity extends AppCompatActivity {
+    private BottomNavigationView bottomNav;
+
     private BottomNavigationView.OnItemSelectedListener navListener = new BottomNavigationView.OnItemSelectedListener() {
         @Override
         public boolean onNavigationItemSelected(@NonNull MenuItem item) {
@@ -47,12 +49,16 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        BottomNavigationView bottomNav = findViewById(R.id.bottom_navigation);
+        bottomNav = findViewById(R.id.bottom_navigation);
         bottomNav.setOnItemSelectedListener(navListener);
 
         // Set HomeFragment as the default
         if (savedInstanceState == null) {
             getSupportFragmentManager().beginTransaction().replace(R.id.fragment_container, new HomeFragment()).commit();
         }
+    }
+
+    public BottomNavigationView getBottomNavigationView() {
+        return bottomNav;
     }
 }
