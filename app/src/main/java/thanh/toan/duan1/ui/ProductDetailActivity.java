@@ -23,11 +23,16 @@ import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
 import thanh.toan.duan1.R;
-import thanh.toan.duan1.adapter.ReviewAdapter;
+
+import android.content.Context;
+import android.content.SharedPreferences;
+
 import thanh.toan.duan1.api.ApiService;
 import thanh.toan.duan1.api.apiProducts;
+import thanh.toan.duan1.api.apiProfile;
 import thanh.toan.duan1.model.Product;
 import thanh.toan.duan1.model.Review;
+import thanh.toan.duan1.model.User;
 
 public class ProductDetailActivity extends Activity {
 
@@ -38,6 +43,10 @@ public class ProductDetailActivity extends Activity {
     private RecyclerView reviewRecyclerView;
 
     private apiProducts api;
+    private apiProfile apiProfile;
+    private Product currentProduct;
+    private boolean isInWishlist = false;
+    private String currentProductId;
 
     public static final String BASE_URL = "http://10.0.2.2:3000/";
 
@@ -49,17 +58,19 @@ public class ProductDetailActivity extends Activity {
         initViews();
 
         api = ApiService.getApi(this).create(apiProducts.class);
+        apiProfile = ApiService.getApi(this).create(apiProfile.class);
 
         // Lấy productId từ Intent
-        String productId = getIntent().getStringExtra("productId");
+        currentProductId = getIntent().getStringExtra("productId");
 
-        if (productId == null) {
+        if (currentProductId == null) {
             Toast.makeText(this, "Không tìm thấy sản phẩm!", Toast.LENGTH_SHORT).show();
             finish();
             return;
         }
 
-        fetchProductDetail(productId);
+        fetchProductDetail(currentProductId);
+        checkWishlistStatus();
     }
 
     private void initViews() {
@@ -119,6 +130,103 @@ public class ProductDetailActivity extends Activity {
         addToCartButton.setOnClickListener(v ->
                 Toast.makeText(this, "Đã thêm vào giỏ", Toast.LENGTH_SHORT).show()
         );
+
+        // Setup wishlist button
+        wishlistButton.setOnClickListener(v -> toggleWishlist());
+    }
+
+    private void checkWishlistStatus() {
+        SharedPreferences prefs = getSharedPreferences("MyAppPrefs", Context.MODE_PRIVATE);
+        String token = prefs.getString("token", null);
+
+        if (token == null) {
+            updateWishlistIcon(false);
+            return;
+        }
+
+        apiProfile.getUserProfile("Bearer " + token).enqueue(new Callback<User>() {
+            @Override
+            public void onResponse(Call<User> call, Response<User> response) {
+                if (response.isSuccessful() && response.body() != null) {
+                    User user = response.body();
+                    List<Product> wishlist = user.getWishlist();
+                    
+                    if (wishlist != null) {
+                        for (Product product : wishlist) {
+                            if (product != null && product.getId() != null && 
+                                product.getId().equals(currentProductId)) {
+                                isInWishlist = true;
+                                break;
+                            }
+                        }
+                    }
+                    updateWishlistIcon(isInWishlist);
+                }
+            }
+
+            @Override
+            public void onFailure(Call<User> call, Throwable t) {
+                // Không làm gì nếu lỗi
+            }
+        });
+    }
+
+    private void toggleWishlist() {
+        SharedPreferences prefs = getSharedPreferences("MyAppPrefs", Context.MODE_PRIVATE);
+        String token = prefs.getString("token", null);
+
+        if (token == null) {
+            Toast.makeText(this, "Bạn cần đăng nhập để thêm vào yêu thích", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        if (isInWishlist) {
+            // Xóa khỏi wishlist
+            apiProfile.removeFromWishlist(currentProductId, "Bearer " + token).enqueue(new Callback<User>() {
+                @Override
+                public void onResponse(Call<User> call, Response<User> response) {
+                    if (response.isSuccessful()) {
+                        isInWishlist = false;
+                        updateWishlistIcon(false);
+                        Toast.makeText(ProductDetailActivity.this, "Đã xóa khỏi yêu thích", Toast.LENGTH_SHORT).show();
+                    } else {
+                        Toast.makeText(ProductDetailActivity.this, "Không thể xóa khỏi yêu thích", Toast.LENGTH_SHORT).show();
+                    }
+                }
+
+                @Override
+                public void onFailure(Call<User> call, Throwable t) {
+                    Toast.makeText(ProductDetailActivity.this, "Lỗi kết nối", Toast.LENGTH_SHORT).show();
+                }
+            });
+        } else {
+            // Thêm vào wishlist
+            apiProfile.addToWishlist(currentProductId, "Bearer " + token).enqueue(new Callback<User>() {
+                @Override
+                public void onResponse(Call<User> call, Response<User> response) {
+                    if (response.isSuccessful()) {
+                        isInWishlist = true;
+                        updateWishlistIcon(true);
+                        Toast.makeText(ProductDetailActivity.this, "Đã thêm vào yêu thích", Toast.LENGTH_SHORT).show();
+                    } else {
+                        Toast.makeText(ProductDetailActivity.this, "Không thể thêm vào yêu thích", Toast.LENGTH_SHORT).show();
+                    }
+                }
+
+                @Override
+                public void onFailure(Call<User> call, Throwable t) {
+                    Toast.makeText(ProductDetailActivity.this, "Lỗi kết nối", Toast.LENGTH_SHORT).show();
+                }
+            });
+        }
+    }
+
+    private void updateWishlistIcon(boolean isFavorite) {
+        if (isFavorite) {
+            wishlistButton.setImageResource(R.drawable.ic_favorite_filled);
+        } else {
+            wishlistButton.setImageResource(R.drawable.ic_favorite_border);
+        }
     }
 
 
