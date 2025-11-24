@@ -1,11 +1,7 @@
 package thanh.toan.duan1.fragment;
 
-import android.content.BroadcastReceiver;
 import android.content.Context;
-import android.content.Intent;
-import android.content.IntentFilter;
 import android.content.SharedPreferences;
-import android.os.Build;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -19,9 +15,8 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.GridLayoutManager;
+import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
-
-import com.google.gson.Gson;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -43,8 +38,6 @@ public class WishlistFragment extends Fragment {
     private LinearLayout emptyLayout;
     private ProductAdapter adapter;
     private List<Product> wishlistProducts;
-
-    private BroadcastReceiver wishlistReceiver;
 
     @Nullable
     @Override
@@ -73,7 +66,7 @@ public class WishlistFragment extends Fragment {
     }
 
     private void loadWishlist() {
-        SharedPreferences prefs = requireContext().getSharedPreferences("MyAppPrefs", Context.MODE_PRIVATE);
+        SharedPreferences prefs = getContext().getSharedPreferences("MyAppPrefs", Context.MODE_PRIVATE);
         String token = prefs.getString("token", null);
 
         if (token == null) {
@@ -87,34 +80,16 @@ public class WishlistFragment extends Fragment {
         emptyLayout.setVisibility(View.GONE);
 
         apiProfile api = ApiService.getApi(getContext()).create(apiProfile.class);
-        api.getUserProfile().enqueue(new Callback<User>() {
+        api.getUserProfile("Bearer " + token).enqueue(new Callback<User>() {
             @Override
             public void onResponse(Call<User> call, Response<User> response) {
                 progressBar.setVisibility(View.GONE);
 
                 if (response.isSuccessful() && response.body() != null) {
                     User user = response.body();
+                    List<Product> products = user.getWishlist();
 
-                    List<Product> products = new ArrayList<>();
-                    List<?> rawWishlist = user.getWishlist();
-                    if (rawWishlist != null) {
-                        Gson gson = new Gson();
-                        for (Object item : rawWishlist) {
-                            if (item instanceof Product) {
-                                products.add((Product) item);
-                            } else {
-                                try {
-                                    String json = gson.toJson(item);
-                                    Product p = gson.fromJson(json, Product.class);
-                                    if (p != null) products.add(p);
-                                } catch (Exception e) {
-                                    Log.w(TAG, "Cannot parse wishlist item: " + e.getMessage());
-                                }
-                            }
-                        }
-                    }
-
-                    if (!products.isEmpty()) {
+                    if (products != null && !products.isEmpty()) {
                         wishlistProducts.clear();
                         wishlistProducts.addAll(products);
                         adapter.notifyDataSetChanged();
@@ -154,34 +129,5 @@ public class WishlistFragment extends Fragment {
         // Reload khi quay lại fragment
         loadWishlist();
     }
-
-    // register receiver to refresh wishlist when other parts of app modify it
-    @Override
-    public void onStart() {
-        super.onStart();
-        wishlistReceiver = new BroadcastReceiver() {
-            @Override
-            public void onReceive(Context context, Intent intent) {
-                String action = intent != null ? intent.getAction() : "<null>";
-                Log.d(TAG, "Received broadcast action=" + action + ", reloading wishlist");
-                // reload wishlist when receiving the update broadcast
-                loadWishlist();
-            }
-        };
-        // Register a receiver for the app-wide action. On Android 14+ specify export flag.
-        IntentFilter filter = new IntentFilter("thanh.toan.duan1.WISHLIST_UPDATED");
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            requireContext().registerReceiver(wishlistReceiver, filter, Context.RECEIVER_NOT_EXPORTED);
-        } else {
-            requireContext().registerReceiver(wishlistReceiver, filter);
-        }
-    }
-
-    @Override
-    public void onStop() {
-        super.onStop();
-        try {
-            requireContext().unregisterReceiver(wishlistReceiver);
-        } catch (Exception ignored) {}
-     }
 }
+

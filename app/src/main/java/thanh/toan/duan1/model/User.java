@@ -3,7 +3,7 @@ package thanh.toan.duan1.model;
 import com.google.gson.annotations.SerializedName;
 import java.util.List;
 
-public class User {
+public class    User {
 
     @SerializedName("_id")
     private String id;
@@ -16,7 +16,7 @@ public class User {
     private Boolean isActive;
     private Boolean isAdmin;
 
-    private List<Object> wishlist;
+    private List<Product> wishlist;
 
     public String getId() {
         return id;
@@ -50,7 +50,11 @@ public class User {
         return isAdmin;
     }
 
-    public List<Object> getWishlist() {
+    public List<Product> getWishlist() {
         return wishlist;
+    }
+
+    public void setWishlist(List<Product> wishlist) {
+        this.wishlist = wishlist;
     }
 }
