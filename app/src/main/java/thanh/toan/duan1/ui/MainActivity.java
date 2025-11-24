@@ -16,6 +16,7 @@ import com.google.android.material.bottomnavigation.BottomNavigationView;
 import thanh.toan.duan1.R;
 import thanh.toan.duan1.fragment.HomeFragment;
 import thanh.toan.duan1.fragment.ProfileFragment;
+import thanh.toan.duan1.fragment.WishlistFragment;
 
 public class MainActivity extends AppCompatActivity {
     private BottomNavigationView.OnItemSelectedListener navListener = new BottomNavigationView.OnItemSelectedListener() {
@@ -28,7 +29,7 @@ public class MainActivity extends AppCompatActivity {
             } else if (itemId == R.id.navigation_cart) {
 //                selectedFragment = new CartFragment();
             } else if (itemId == R.id.navigation_wishlist) {
-//                selectedFragment = new WishlistFragment();
+                selectedFragment = new WishlistFragment();
             } else if (itemId == R.id.navigation_profile) {
                 selectedFragment = new ProfileFragment();
             }

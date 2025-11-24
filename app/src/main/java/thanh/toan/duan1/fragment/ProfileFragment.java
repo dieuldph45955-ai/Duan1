@@ -1,6 +1,5 @@
 package thanh.toan.duan1.fragment;
 
-import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -21,6 +20,7 @@ import retrofit2.Callback;
 import retrofit2.Response;
 import thanh.toan.duan1.R;
 import thanh.toan.duan1.api.ApiService;
+
 import thanh.toan.duan1.api.apiProfile;
 import thanh.toan.duan1.model.User;
 import thanh.toan.duan1.ui.LoginActivity;
@@ -30,7 +30,6 @@ public class ProfileFragment extends Fragment {
     private TextView userNameTextView, userEmailTextView;
     private Button logoutButton;
 
-    @SuppressLint("MissingInflatedId")
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater,
@@ -50,25 +49,16 @@ public class ProfileFragment extends Fragment {
     }
 
     private void loadUserInfo() {
-        SharedPreferences prefs = getContext().getSharedPreferences("MyAppPrefs", Context.MODE_PRIVATE);
-        String token = prefs.getString("token", null); // KEY đúng với LoginActivity
-
-        if (token == null) {
-            Toast.makeText(getContext(), "Bạn chưa đăng nhập!", Toast.LENGTH_SHORT).show();
-            return;
-        }
-
         apiProfile api = ApiService.getApi(getContext()).create(apiProfile.class);
-        Call<User> call = api.getUserProfile("Bearer " + token); // Gọi method đúng
+        Call<User> call = api.getUserProfile();
 
         call.enqueue(new Callback<User>() {
             @Override
             public void onResponse(Call<User> call, Response<User> response) {
                 if (response.isSuccessful() && response.body() != null) {
                     User user = response.body();
-
-                    userNameTextView.setText(user.getUsername());
-                    userEmailTextView.setText(user.getEmail());
+                    userNameTextView.setText(user.getFullName() != null ? user.getFullName() : user.getUsername());
+                    userEmailTextView.setText(user.getEmail() != null ? user.getEmail() : "");
                 } else {
                     Toast.makeText(getContext(), "Không tải được thông tin!", Toast.LENGTH_SHORT).show();
                 }
@@ -84,7 +74,7 @@ public class ProfileFragment extends Fragment {
     private void setupLogout() {
         logoutButton.setOnClickListener(v -> {
             SharedPreferences prefs = getContext().getSharedPreferences("MyAppPrefs", Context.MODE_PRIVATE);
-            prefs.edit().remove("token").apply(); // KEY đúng
+            prefs.edit().remove("token").apply();
 
             Intent intent = new Intent(getActivity(), LoginActivity.class);
             startActivity(intent);

@@ -1,6 +1,8 @@
 package thanh.toan.duan1.fragment;
 
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -15,7 +17,9 @@ import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import retrofit2.Call;
 import retrofit2.Callback;
@@ -23,8 +27,10 @@ import retrofit2.Response;
 import thanh.toan.duan1.R;
 import thanh.toan.duan1.adapter.ProductAdapter;
 import thanh.toan.duan1.api.ApiService;
+import thanh.toan.duan1.api.apiFavorite;
 import thanh.toan.duan1.api.apiProducts;
 import thanh.toan.duan1.model.Product;
+import thanh.toan.duan1.request.WishlistResponse;
 
 public class HomeFragment extends Fragment {
     private static final String TAG = "HomeFragment";
@@ -34,6 +40,9 @@ public class HomeFragment extends Fragment {
     private SearchView searchView;
     private String currentCategory = null;
     private String currentSearch = "";
+    private Handler searchHandler;
+    private Runnable searchRunnable;
+    private static final int SEARCH_DELAY = 500; // 500ms delay
 
     @Nullable
     @Override
@@ -51,6 +60,7 @@ public class HomeFragment extends Fragment {
             Log.e(TAG, "RecyclerView is null!");
         }
 
+        searchHandler = new Handler(Looper.getMainLooper());
         setupSearchView();
         loadProducts(null, "");
 
@@ -69,8 +79,16 @@ public class HomeFragment extends Fragment {
             @Override
             public boolean onQueryTextChange(String newText) {
                 currentSearch = newText;
-                // Optional: Add delay to avoid too many requests while typing
-                loadProducts(currentCategory, newText);
+
+                // Remove previous search request
+                if (searchRunnable != null) {
+                    searchHandler.removeCallbacks(searchRunnable);
+                }
+
+                // Create new search request with delay
+                searchRunnable = () -> loadProducts(currentCategory, newText);
+                searchHandler.postDelayed(searchRunnable, SEARCH_DELAY);
+
                 return true;
             }
         });
@@ -93,17 +111,32 @@ public class HomeFragment extends Fragment {
                     List<Product> products = response.body();
                     Log.d(TAG, "Products count: " + products.size());
 
-                    if (products.size() > 0) {
-                        Product firstProduct = products.get(0);
-                        Log.d(TAG, "First product: " + firstProduct.getName());
-                        Log.d(TAG, "Images: " + (firstProduct.getImages() != null ? firstProduct.getImages().size() : "null"));
-                        Log.d(TAG, "Rating: " + firstProduct.getRating());
-                        Log.d(TAG, "Reviews: " + (firstProduct.getReviews() != null ? firstProduct.getReviews().size() : "null"));
-                    }
-
                     adapter = new ProductAdapter(getContext(), products);
                     productsRecyclerView.setAdapter(adapter);
                     Log.d(TAG, "Adapter set successfully");
+
+                    // Fetch wishlist once and pass favorites to adapter
+                    apiFavorite favApi = ApiService.getApi(getContext()).create(apiFavorite.class);
+                    favApi.getWishlist().enqueue(new Callback<WishlistResponse>() {
+                        @Override
+                        public void onResponse(Call<WishlistResponse> call, Response<WishlistResponse> response) {
+                            Set<String> favIds = new HashSet<>();
+                            if (response.isSuccessful() && response.body() != null && response.body().getData() != null
+                                    && response.body().getData().getWishlist() != null) {
+                                for (Product p : response.body().getData().getWishlist()) {
+                                    if (p != null && p.getId() != null) favIds.add(p.getId());
+                                }
+                            }
+                            adapter.setFavorites(favIds);
+                        }
+
+                        @Override
+                        public void onFailure(Call<WishlistResponse> call, Throwable t) {
+                            // ignore - keep empty favorites
+                        }
+                    });
+
+
                 } else {
                     Log.e(TAG, "Response not successful or body is null");
                     Toast.makeText(getContext(), "Failed to load products", Toast.LENGTH_SHORT).show();
@@ -118,5 +151,14 @@ public class HomeFragment extends Fragment {
                 Toast.makeText(getContext(), "Error: " + t.getMessage(), Toast.LENGTH_SHORT).show();
             }
         });
+    }
+
+    @Override
+    public void onDestroyView() {
+        super.onDestroyView();
+        // Clean up handler
+        if (searchHandler != null && searchRunnable != null) {
+            searchHandler.removeCallbacks(searchRunnable);
+        }
     }
 }

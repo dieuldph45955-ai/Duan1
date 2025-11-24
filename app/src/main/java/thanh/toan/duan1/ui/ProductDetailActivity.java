@@ -1,9 +1,11 @@
 package thanh.toan.duan1.ui;
 
+import android.annotation.SuppressLint;
 import android.app.Activity;
+import android.content.Intent;
 import android.os.Bundle;
 import android.util.Log;
-import android.widget.Button;
+import android.view.View;
 import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.TextView;
@@ -14,6 +16,7 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.bumptech.glide.Glide;
+import com.google.android.material.button.MaterialButton;
 
 import java.text.NumberFormat;
 import java.util.List;
@@ -33,8 +36,8 @@ public class ProductDetailActivity extends Activity {
 
     private ImageView productImage;
     private TextView productName, productPrice, productDescription;
-    private ImageButton wishlistButton;
-    private Button addToCartButton;
+    private ImageButton wishlistButton, backButton;
+    private MaterialButton addToCartButton;
     private RecyclerView reviewRecyclerView;
 
     private apiProducts api;
@@ -60,8 +63,13 @@ public class ProductDetailActivity extends Activity {
         }
 
         fetchProductDetail(productId);
+
+        backButton.setOnClickListener(v -> {
+            finish();
+        });
     }
 
+    @SuppressLint("WrongViewCast")
     private void initViews() {
         productImage = findViewById(R.id.product_detail_image);
         productName = findViewById(R.id.product_detail_name);
@@ -69,6 +77,7 @@ public class ProductDetailActivity extends Activity {
         productDescription = findViewById(R.id.product_detail_description);
         wishlistButton = findViewById(R.id.wishlist_button);
         addToCartButton = findViewById(R.id.add_to_cart_button);
+        backButton = findViewById(R.id.back_button);
 //        reviewRecyclerView = findViewById(R.id.reviews_recycler_view);
 //
 //        reviewRecyclerView.setLayoutManager(new LinearLayoutManager(this));
