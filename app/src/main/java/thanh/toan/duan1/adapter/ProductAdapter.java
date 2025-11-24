@@ -3,7 +3,6 @@ package thanh.toan.duan1.adapter;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -112,62 +111,52 @@ public class ProductAdapter extends RecyclerView.Adapter<ProductAdapter.ProductV
                 holder.wishlistButton.setImageResource(R.drawable.ic_favorite_border);
                 if (favoriteIds != null) favoriteIds.remove(product.getId());
                 // notify wishlist changed (application broadcast)
-                Log.d("ProductAdapter", "Removing from wishlist, productId=" + product.getId());
                 Intent intent = new Intent("thanh.toan.duan1.WISHLIST_UPDATED");
-                Log.d("ProductAdapter", "Broadcasting wishlist update (remove) for productId=" + product.getId());
                 context.getApplicationContext().sendBroadcast(intent);
 
                 apiFav.removeFromWishlist(product.getId()).enqueue(new Callback<WishlistResponse>() {
                     @Override
                     public void onResponse(Call<WishlistResponse> call, Response<WishlistResponse> response) {
-                        Log.d("ProductAdapter", "removeFromWishlist response code=" + response.code());
-                         Toast.makeText(context, "Đã xóa khỏi yêu thích", Toast.LENGTH_SHORT).show();
-                     }
+                        Toast.makeText(context, "Đã xóa khỏi yêu thích", Toast.LENGTH_SHORT).show();
+                    }
 
-                     @Override
-                     public void onFailure(Call<WishlistResponse> call, Throwable t) {
-                        Log.e("ProductAdapter", "removeFromWishlist failed: " + t.getMessage(), t);
-                         // revert on failure
-                         if (favoriteIds != null) favoriteIds.add(product.getId());
-                         holder.wishlistButton.setImageResource(R.drawable.ic_favorite_filled);
-                         // notify wishlist changed (application broadcast)
+                    @Override
+                    public void onFailure(Call<WishlistResponse> call, Throwable t) {
+                        // revert on failure
+                        if (favoriteIds != null) favoriteIds.add(product.getId());
+                        holder.wishlistButton.setImageResource(R.drawable.ic_favorite_filled);
+                        // notify wishlist changed (application broadcast)
                         Intent intent = new Intent("thanh.toan.duan1.WISHLIST_UPDATED");
-                        Log.d("ProductAdapter", "Broadcasting wishlist update (revert remove) for productId=" + product.getId());
                         context.getApplicationContext().sendBroadcast(intent);
-                         Toast.makeText(context, "Xoá thất bại", Toast.LENGTH_SHORT).show();
-                     }
-                 });
-             } else {
-                 // optimistic add
-                 holder.wishlistButton.setImageResource(R.drawable.ic_favorite_filled);
-                 if (favoriteIds != null) favoriteIds.add(product.getId());
-                 // notify wishlist changed (application broadcast)
-                Log.d("ProductAdapter", "Adding to wishlist, productId=" + product.getId());
+                        Toast.makeText(context, "Xoá thất bại", Toast.LENGTH_SHORT).show();
+                    }
+                });
+            } else {
+                // optimistic add
+                holder.wishlistButton.setImageResource(R.drawable.ic_favorite_filled);
+                if (favoriteIds != null) favoriteIds.add(product.getId());
+                // notify wishlist changed (application broadcast)
                 Intent intent = new Intent("thanh.toan.duan1.WISHLIST_UPDATED");
-                Log.d("ProductAdapter", "Broadcasting wishlist update (add) for productId=" + product.getId());
                 context.getApplicationContext().sendBroadcast(intent);
 
-                 apiFav.addToWishlist(product.getId()).enqueue(new Callback<WishlistResponse>() {
-                     @Override
-                     public void onResponse(Call<WishlistResponse> call, Response<WishlistResponse> response) {
-                        Log.d("ProductAdapter", "addToWishlist response code=" + response.code());
-                         Toast.makeText(context, "Đã thêm vào yêu thích", Toast.LENGTH_SHORT).show();
-                     }
+                apiFav.addToWishlist(product.getId()).enqueue(new Callback<WishlistResponse>() {
+                    @Override
+                    public void onResponse(Call<WishlistResponse> call, Response<WishlistResponse> response) {
+                        Toast.makeText(context, "Đã thêm vào yêu thích", Toast.LENGTH_SHORT).show();
+                    }
 
-                     @Override
-                     public void onFailure(Call<WishlistResponse> call, Throwable t) {
-                        Log.e("ProductAdapter", "addToWishlist failed: " + t.getMessage(), t);
-                         // revert on failure
-                         if (favoriteIds != null) favoriteIds.remove(product.getId());
-                         holder.wishlistButton.setImageResource(R.drawable.ic_favorite_border);
-                         // notify wishlist changed (application broadcast)
+                    @Override
+                    public void onFailure(Call<WishlistResponse> call, Throwable t) {
+                        // revert on failure
+                        if (favoriteIds != null) favoriteIds.remove(product.getId());
+                        holder.wishlistButton.setImageResource(R.drawable.ic_favorite_border);
+                        // notify wishlist changed (application broadcast)
                         Intent intent = new Intent("thanh.toan.duan1.WISHLIST_UPDATED");
-                        Log.d("ProductAdapter", "Broadcasting wishlist update (revert add) for productId=" + product.getId());
                         context.getApplicationContext().sendBroadcast(intent);
-                         Toast.makeText(context, "Thêm thất bại", Toast.LENGTH_SHORT).show();
-                     }
-                 });
-             }
+                        Toast.makeText(context, "Thêm thất bại", Toast.LENGTH_SHORT).show();
+                    }
+                });
+            }
         });
 
         // Click item mở chi tiết
