@@ -59,6 +59,13 @@ public class RegisterActivity extends AppCompatActivity {
             Toast.makeText(this, "Passwords do not match", Toast.LENGTH_SHORT).show();
             return;
         }
+
+        // Validate password: only lowercase letters and digits
+        if (!password.matches("^[a-z0-9]+$")) {
+            Toast.makeText(this, "Password must contain only lowercase letters and numbers", Toast.LENGTH_LONG).show();
+            return;
+        }
+
         Map<String, Object> body = new HashMap<>();
         body.put("username", username);
         body.put("email", email);

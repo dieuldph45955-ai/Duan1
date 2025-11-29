@@ -1,7 +1,6 @@
 package thanh.toan.duan1.fragment;
 
 import android.content.Context;
-import android.content.Context;
 import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.util.Log;
@@ -35,6 +34,7 @@ import thanh.toan.duan1.model.User;
 import thanh.toan.duan1.ui.MainActivity;
 
 public class WishlistFragment extends Fragment implements WishlistAdapter.WishlistActionListener {
+
     private static final String TAG = "WishlistFragment";
 
     private SwipeRefreshLayout swipeRefreshLayout;
@@ -67,6 +67,7 @@ public class WishlistFragment extends Fragment implements WishlistAdapter.Wishli
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_wishlist, container, false);
+
         initViews(view);
         setupRecyclerView();
         setupSwipeRefresh();
@@ -118,9 +119,7 @@ public class WishlistFragment extends Fragment implements WishlistAdapter.Wishli
     }
 
     private void fetchWishlist(boolean isRefreshing) {
-        if (token == null || api == null) {
-            return;
-        }
+        if (token == null || api == null) return;
 
         if (!isRefreshing) {
             progressBar.setVisibility(View.VISIBLE);
@@ -130,29 +129,64 @@ public class WishlistFragment extends Fragment implements WishlistAdapter.Wishli
 
         cancelCurrentCall();
         currentCall = api.getUserProfile("Bearer " + token);
+
         currentCall.enqueue(new Callback<User>() {
             @Override
-            public void onResponse(Call<User> call, Response<User> response) {
+            public void onResponse(@NonNull Call<User> call, @NonNull Response<User> response) {
                 swipeRefreshLayout.setRefreshing(false);
                 progressBar.setVisibility(View.GONE);
 
-                if (!isAdded() || call.isCanceled()) {
-                    return;
-                }
+                if (!isAdded() || call.isCanceled()) return;
 
                 if (response.isSuccessful() && response.body() != null) {
-                    List<Product> products = response.body().getWishlist();
+                    List<String> wishlistIds = response.body().getWishlist(); // <-- LIST STRING
+
                     wishlistProducts.clear();
-                    if (products != null) {
-                        wishlistProducts.addAll(products);
+
+                    if (wishlistIds == null || wishlistIds.isEmpty()) {
+                        showEmptyState();
+                        return;
                     }
 
-                    if (wishlistProducts.isEmpty()) {
-                        showEmptyState();
-                    } else {
-                        adapter.notifyDataSetChanged();
-                        showWishlist();
+                    // Load từng product theo ID - update adapter once all requests complete
+                    final int[] pending = {wishlistIds.size()};
+                    for (String id : wishlistIds) {
+                        api.getProductById(id).enqueue(new Callback<Product>() {
+                            @Override
+                            public void onResponse(@NonNull Call<Product> call, @NonNull Response<Product> productResp) {
+                                if (!isAdded()) return;
+                                if (productResp.isSuccessful() && productResp.body() != null) {
+                                    wishlistProducts.add(productResp.body());
+                                } else {
+                                    Log.e(TAG, "Load product failed: " + productResp.code());
+                                }
+                                pending[0]--;
+                                if (pending[0] == 0) {
+                                    adapter.notifyDataSetChanged();
+                                    if (wishlistProducts.isEmpty()) {
+                                        showEmptyState();
+                                    } else {
+                                        showWishlist();
+                                    }
+                                }
+                            }
+
+                            @Override
+                            public void onFailure(@NonNull Call<Product> call, @NonNull Throwable t) {
+                                Log.e(TAG, "Load product failed: " + t.getMessage());
+                                pending[0]--;
+                                if (isAdded() && pending[0] == 0) {
+                                    adapter.notifyDataSetChanged();
+                                    if (wishlistProducts.isEmpty()) {
+                                        showEmptyState();
+                                    } else {
+                                        showWishlist();
+                                    }
+                                }
+                            }
+                        });
                     }
+
                 } else {
                     showToastSafe("Không tải được danh sách yêu thích");
                     showEmptyState();
@@ -160,25 +194,20 @@ public class WishlistFragment extends Fragment implements WishlistAdapter.Wishli
             }
 
             @Override
-            public void onFailure(Call<User> call, Throwable t) {
+            public void onFailure(@NonNull Call<User> call, @NonNull Throwable t) {
                 swipeRefreshLayout.setRefreshing(false);
                 progressBar.setVisibility(View.GONE);
-
-                if (!isAdded() || call.isCanceled()) {
-                    return;
-                }
+                if (!isAdded() || call.isCanceled()) return;
 
                 Log.e(TAG, "API Error: " + t.getMessage());
-                showToastSafe("Lỗi kết nối: " + t.getMessage());
+//                showToastSafe("Lỗi kết nối: " + t.getMessage());
                 showEmptyState();
             }
         });
     }
 
     private void cancelCurrentCall() {
-        if (currentCall != null && !currentCall.isCanceled()) {
-            currentCall.cancel();
-        }
+        if (currentCall != null && !currentCall.isCanceled()) currentCall.cancel();
         currentCall = null;
     }
 
@@ -195,9 +224,7 @@ public class WishlistFragment extends Fragment implements WishlistAdapter.Wishli
     @Override
     public void onResume() {
         super.onResume();
-        if (token != null) {
-            fetchWishlist(false);
-        }
+        if (token != null) fetchWishlist(false);
     }
 
     @Override
@@ -210,31 +237,24 @@ public class WishlistFragment extends Fragment implements WishlistAdapter.Wishli
         api.removeFromWishlist(product.getId(), "Bearer " + token).enqueue(new Callback<User>() {
             @Override
             public void onResponse(Call<User> call, Response<User> response) {
-                if (!isAdded()) {
-                    return;
-                }
-                if (response.isSuccessful()) {
-                    int adapterPosition = position >= 0 ? position : wishlistProducts.indexOf(product);
-                    if (adapterPosition >= 0 && adapterPosition < wishlistProducts.size()) {
-                        wishlistProducts.remove(adapterPosition);
-                        adapter.notifyItemRemoved(adapterPosition);
-                    }
+                if (!isAdded()) return;
 
-                    if (wishlistProducts.isEmpty()) {
-                        showEmptyState();
-                    }
+                if (response.isSuccessful()) {
+                    wishlistProducts.remove(position);
+                    adapter.notifyItemRemoved(position);
+
+                    if (wishlistProducts.isEmpty()) showEmptyState();
+
                     showToastSafe("Đã xóa khỏi yêu thích");
                 } else {
-                    showToastSafe("Không thể xóa khỏi yêu thích");
+                    showToastSafe("Không thể xóa");
                 }
             }
 
             @Override
             public void onFailure(Call<User> call, Throwable t) {
-                if (!isAdded()) {
-                    return;
-                }
-                showToastSafe("Lỗi kết nối: " + t.getMessage());
+                if (!isAdded()) return;
+//                showToastSafe("Lỗi kết nối: " + t.getMessage());
             }
         });
     }
@@ -242,15 +262,12 @@ public class WishlistFragment extends Fragment implements WishlistAdapter.Wishli
     private long lastToastTime = 0L;
 
     private void showToastSafe(String message) {
-        if (!isAdded() || appContext == null) {
-            return;
-        }
+        if (!isAdded() || appContext == null) return;
+
         long now = System.currentTimeMillis();
-        if (now - lastToastTime < 1500) {
-            return;
-        }
+        if (now - lastToastTime < 1500) return;
+
         lastToastTime = now;
         Toast.makeText(appContext, message, Toast.LENGTH_SHORT).show();
     }
 }
-

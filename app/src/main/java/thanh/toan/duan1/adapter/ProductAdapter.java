@@ -1,8 +1,8 @@
 package thanh.toan.duan1.adapter;
 
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.Intent;
-import android.content.SharedPreferences;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -12,48 +12,40 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
+import androidx.appcompat.widget.AppCompatImageButton;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.bumptech.glide.Glide;
-import com.google.android.material.button.MaterialButton;
 
 import java.text.NumberFormat;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
-import java.util.HashSet;
 
-import retrofit2.Call;
-import retrofit2.Callback;
-import retrofit2.Response;
 import thanh.toan.duan1.R;
-import thanh.toan.duan1.api.ApiService;
-import thanh.toan.duan1.api.apiFavorite;
 import thanh.toan.duan1.model.Product;
-import thanh.toan.duan1.request.WishlistResponse;
 import thanh.toan.duan1.ui.ProductDetailActivity;
+import thanh.toan.duan1.utils.CartManager;
 
 public class ProductAdapter extends RecyclerView.Adapter<ProductAdapter.ProductViewHolder> {
 
-    private final Context context;
-    private final List<Product> productList;
-
+    private Context context;
+    private List<Product> productList;
+    private OnFavoriteClickListener favoriteClickListener;
     private Set<String> favoriteIds = new HashSet<>();
+
+    public interface OnFavoriteClickListener {
+        void onFavoriteClick(Product product, boolean isFavorite, int position);
+    }
+
+    public void setOnFavoriteClickListener(OnFavoriteClickListener listener) {
+        this.favoriteClickListener = listener;
+    }
 
     public ProductAdapter(Context context, List<Product> productList) {
         this.context = context;
         this.productList = productList;
-    }
-
-    public ProductAdapter(Context context, List<Product> productList, Set<String> favoriteIds) {
-        this.context = context;
-        this.productList = productList;
-        if (favoriteIds != null) this.favoriteIds = favoriteIds;
-    }
-
-    public void setFavorites(Set<String> favoriteIds) {
-        this.favoriteIds = favoriteIds != null ? favoriteIds : new HashSet<>();
-        notifyDataSetChanged();
     }
 
     @NonNull
@@ -67,17 +59,37 @@ public class ProductAdapter extends RecyclerView.Adapter<ProductAdapter.ProductV
     public void onBindViewHolder(@NonNull ProductViewHolder holder, int position) {
         Product product = productList.get(position);
 
-        // Hiển thị thông tin sản phẩm
         holder.name.setText(product.getName());
         holder.price.setText(formatPrice(product.getPrice()));
-        holder.category.setText(product.getCategory() != null ? product.getCategory().getName() : "No category");
-        holder.ratingBar.setRating(product.getRating() != null ? product.getRating().floatValue() : 0);
-        holder.reviewCount.setText(product.getReviews() != null ? product.getReviews().size() + " reviews" : "0 reviews");
 
-        // Load ảnh
+        if (product.getCategory() != null && product.getCategory().getName() != null) {
+            holder.category.setText(product.getCategory().getName());
+        } else {
+            holder.category.setText("No category");
+        }
+
+        if (product.getRating() != null) {
+            holder.ratingBar.setRating(product.getRating().floatValue());
+        } else {
+            holder.ratingBar.setRating(0);
+        }
+
+        if (product.getReviews() != null) {
+            holder.reviewCount.setText(product.getReviews().size() + " reviews");
+        } else {
+            holder.reviewCount.setText("0 reviews");
+        }
+
+        // Load ảnh. If server returns a relative path (e.g. /uploads/...), prefix emulator host.
         if (product.getImages() != null && !product.getImages().isEmpty()) {
+            String img = product.getImages().get(0);
+            if (img != null && !img.startsWith("http")) {
+                // ensure leading slash
+                if (!img.startsWith("/")) img = "/" + img;
+                img = "http://10.0.2.2:3000" + img;
+            }
             Glide.with(context)
-                    .load(product.getImages().get(0))
+                    .load(img)
                     .placeholder(R.drawable.ic_launcher_background)
                     .error(R.drawable.ic_launcher_background)
                     .into(holder.image);
@@ -85,98 +97,89 @@ public class ProductAdapter extends RecyclerView.Adapter<ProductAdapter.ProductV
             holder.image.setImageResource(R.drawable.ic_launcher_background);
         }
 
-        // Lấy token
-        SharedPreferences pref = context.getSharedPreferences("MyAppPrefs", Context.MODE_PRIVATE);
-        String tokenRaw = pref.getString("token", "");
-        boolean isLoggedIn = !tokenRaw.isEmpty();
-
-        // API favorite
-        apiFavorite apiFav = ApiService.getApi(context).create(apiFavorite.class);
-
-        // Set heart based on favoritesSet (fetched once by fragment)
-        boolean isFav = favoriteIds != null && favoriteIds.contains(product.getId());
-        holder.wishlistButton.setImageResource(isFav ? R.drawable.ic_favorite_filled : R.drawable.ic_favorite_border);
-
-        // Click heart để toggle favorite
-        holder.wishlistButton.setOnClickListener(v -> {
-            if (!isLoggedIn) {
-                Toast.makeText(context, "Vui lòng đăng nhập để thêm yêu thích", Toast.LENGTH_SHORT).show();
-                return;
+        // favorite icon state
+        boolean isFav = favoriteIds.contains(product.getId());
+        if (holder.favorite != null) {
+            int resId = isFav ? R.drawable.ic_favorite_filled : R.drawable.ic_favorite_border;
+            try {
+                holder.favorite.setImageResource(resId);
+                holder.favorite.clearColorFilter();
+            } catch (Exception e) {
+                if (isFav) holder.favorite.setColorFilter(0xFFFF0000); else holder.favorite.clearColorFilter();
             }
 
-            // Optimistic toggle: update UI immediately and local set, then call API
-            boolean currentlyFav = favoriteIds != null && favoriteIds.contains(product.getId());
-            if (currentlyFav) {
-                // optimistic remove
-                holder.wishlistButton.setImageResource(R.drawable.ic_favorite_border);
-                if (favoriteIds != null) favoriteIds.remove(product.getId());
-                // notify wishlist changed (application broadcast)
-                Intent intent = new Intent("thanh.toan.duan1.WISHLIST_UPDATED");
-                context.getApplicationContext().sendBroadcast(intent);
+            holder.favorite.setOnClickListener(v -> {
+                boolean currentlyFav = favoriteIds.contains(product.getId());
+                int pos = holder.getBindingAdapterPosition();
+                if (pos == RecyclerView.NO_POSITION) return;
+                // optimistically toggle
+                if (currentlyFav) {
+                    favoriteIds.remove(product.getId());
+                } else {
+                    favoriteIds.add(product.getId());
+                }
+                notifyItemChanged(pos);
 
-                apiFav.removeFromWishlist(product.getId()).enqueue(new Callback<WishlistResponse>() {
-                    @Override
-                    public void onResponse(Call<WishlistResponse> call, Response<WishlistResponse> response) {
-                        Toast.makeText(context, "Đã xóa khỏi yêu thích", Toast.LENGTH_SHORT).show();
-                    }
+                if (favoriteClickListener != null) {
+                    favoriteClickListener.onFavoriteClick(product, currentlyFav, pos);
+                }
+            });
+        }
 
-                    @Override
-                    public void onFailure(Call<WishlistResponse> call, Throwable t) {
-                        // revert on failure
-                        if (favoriteIds != null) favoriteIds.add(product.getId());
-                        holder.wishlistButton.setImageResource(R.drawable.ic_favorite_filled);
-                        // notify wishlist changed (application broadcast)
-                        Intent intent = new Intent("thanh.toan.duan1.WISHLIST_UPDATED");
-                        context.getApplicationContext().sendBroadcast(intent);
-                        Toast.makeText(context, "Xoá thất bại", Toast.LENGTH_SHORT).show();
-                    }
-                });
-            } else {
-                // optimistic add
-                holder.wishlistButton.setImageResource(R.drawable.ic_favorite_filled);
-                if (favoriteIds != null) favoriteIds.add(product.getId());
-                // notify wishlist changed (application broadcast)
-                Intent intent = new Intent("thanh.toan.duan1.WISHLIST_UPDATED");
-                context.getApplicationContext().sendBroadcast(intent);
-
-                apiFav.addToWishlist(product.getId()).enqueue(new Callback<WishlistResponse>() {
-                    @Override
-                    public void onResponse(Call<WishlistResponse> call, Response<WishlistResponse> response) {
-                        Toast.makeText(context, "Đã thêm vào yêu thích", Toast.LENGTH_SHORT).show();
-                    }
-
-                    @Override
-                    public void onFailure(Call<WishlistResponse> call, Throwable t) {
-                        // revert on failure
-                        if (favoriteIds != null) favoriteIds.remove(product.getId());
-                        holder.wishlistButton.setImageResource(R.drawable.ic_favorite_border);
-                        // notify wishlist changed (application broadcast)
-                        Intent intent = new Intent("thanh.toan.duan1.WISHLIST_UPDATED");
-                        context.getApplicationContext().sendBroadcast(intent);
-                        Toast.makeText(context, "Thêm thất bại", Toast.LENGTH_SHORT).show();
-                    }
-                });
-            }
-        });
-
-        // Click item mở chi tiết
-        View.OnClickListener openDetail = v -> {
+        holder.itemView.setOnClickListener(v -> {
             Intent intent = new Intent(context, ProductDetailActivity.class);
             intent.putExtra("productId", product.getId());
             context.startActivity(intent);
-        };
-        holder.itemView.setOnClickListener(openDetail);
-        holder.image.setOnClickListener(openDetail);
+        });
 
-        // Button Add to Cart
-        holder.btnAddToCart.setOnClickListener(v ->
-                Toast.makeText(context, product.getName() + " added to cart", Toast.LENGTH_SHORT).show()
-        );
+
+        holder.image.setOnClickListener(v -> {
+            Intent intent = new Intent(context, ProductDetailActivity.class);
+            intent.putExtra("productId", product.getId());
+            context.startActivity(intent);
+        });
+
+        // Add to cart button handling
+        holder.btnAddToCart.setOnClickListener(v -> {
+            try {
+                CartManager cm = new CartManager(context);
+                cm.addToCart(product, 1);
+                Toast.makeText(context, "Đã thêm vào giỏ hàng", Toast.LENGTH_SHORT).show();
+            } catch (Exception e) {
+                Toast.makeText(context, "Lỗi thêm vào giỏ: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+            }
+        });
     }
 
     @Override
     public int getItemCount() {
         return productList.size();
+    }
+
+    public List<Product> getProductList() {
+        return productList;
+    }
+
+    public void setFavorites(Set<String> favIds) {
+        if (favIds == null) return;
+        favoriteIds.clear();
+        favoriteIds.addAll(favIds);
+        notifyDataSetChanged();
+    }
+
+    public void updateFavorite(String productId, boolean isFavorite) {
+        if (isFavorite) favoriteIds.add(productId); else favoriteIds.remove(productId);
+        int pos = findPositionById(productId);
+        if (pos != -1) notifyItemChanged(pos);
+    }
+
+    private int findPositionById(String productId) {
+        if (productId == null || productList == null) return -1;
+        for (int i = 0; i < productList.size(); i++) {
+            Product p = productList.get(i);
+            if (p != null && productId.equals(p.getId())) return i;
+        }
+        return -1;
     }
 
     private String formatPrice(Double price) {
@@ -187,15 +190,17 @@ public class ProductAdapter extends RecyclerView.Adapter<ProductAdapter.ProductV
     }
 
     static class ProductViewHolder extends RecyclerView.ViewHolder {
-        ImageView image, wishlistButton;
+        ImageView image;
+        AppCompatImageButton favorite; // changed to AppCompatImageButton
         TextView name, price, category, reviewCount;
         RatingBar ratingBar;
-        MaterialButton btnAddToCart;
+        AppCompatImageButton btnAddToCart; // changed type to AppCompatImageButton
 
+        @SuppressLint("WrongViewCast")
         public ProductViewHolder(@NonNull View itemView) {
             super(itemView);
             image = itemView.findViewById(R.id.product_image);
-            wishlistButton = itemView.findViewById(R.id.wishlist_button);
+            favorite = itemView.findViewById(R.id.wishlist_button);
             name = itemView.findViewById(R.id.product_name);
             price = itemView.findViewById(R.id.product_price);
             category = itemView.findViewById(R.id.product_category);

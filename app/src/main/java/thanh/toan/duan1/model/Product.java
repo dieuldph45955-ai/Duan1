@@ -14,7 +14,7 @@ public class Product {
     private List<String> images;
     private List<Object> sizes;
     private Double rating;
-    private List<Review> reviews;
+    private List<Product> reviews;
     private String createdAt;
     private Long v;
 
@@ -82,11 +82,11 @@ public class Product {
         this.rating = rating;
     }
 
-    public List<Review> getReviews() {
+    public List<Product> getReviews() {
         return reviews;
     }
 
-    public void setReviews(List<Review> reviews) {
+    public void setReviews(List<Product> reviews) {
         this.reviews = reviews;
     }
 

@@ -10,7 +10,7 @@ import thanh.toan.duan1.request.WishlistResponse;
 public interface apiFavorite {
 
     @GET("wishlist")
-    Call<WishlistResponse> getWishlist();
+    Call<WishlistResponse> getWishlist(String s);
 
     @POST("wishlist/{productId}")
     Call<WishlistResponse> addToWishlist(

@@ -3,9 +3,8 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
+    android:layout_margin="8dp"
     app:cardCornerRadius="8dp"
-
-    android:layout_marginTop="20dp"
     app:cardElevation="4dp">
 
     <LinearLayout
@@ -14,8 +13,7 @@
         android:orientation="vertical">
 
         <!-- Hình ảnh sản phẩm -->
-        <!-- Wrapped in RelativeLayout so we can overlay wishlist button -->
-        <RelativeLayout
+        <FrameLayout
             android:layout_width="match_parent"
             android:layout_height="180dp">
 
@@ -26,18 +24,18 @@
                 android:scaleType="centerCrop"
                 android:src="@drawable/ic_launcher_background" />
 
-            <ImageButton
+            <androidx.appcompat.widget.AppCompatImageButton
                 android:id="@+id/wishlist_button"
                 android:layout_width="40dp"
                 android:layout_height="40dp"
-                android:layout_alignParentEnd="true"
+                android:layout_gravity="end|top"
                 android:layout_margin="8dp"
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:scaleType="centerInside"
                 android:src="@drawable/ic_favorite_border"
                 android:contentDescription="Add to wishlist" />
 
-        </RelativeLayout>
+        </FrameLayout>
 
         <!-- Tên sản phẩm -->
         <TextView
@@ -46,6 +44,8 @@
             android:layout_height="wrap_content"
             android:padding="8dp"
             android:text="Product Name"
+            android:ellipsize="end"
+            android:maxLines="2"
             android:textAppearance="@style/TextAppearance.AppCompat.Medium"
             android:textStyle="bold" />
 
@@ -60,19 +60,36 @@
             android:textAppearance="@style/TextAppearance.AppCompat.Body2"
             android:textColor="@android:color/darker_gray" />
 
-        <!-- Giá sản phẩm -->
-        <TextView
-            android:id="@+id/product_price"
+        <!-- Giá và nút giỏ hàng -->
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
             android:paddingStart="8dp"
             android:paddingEnd="8dp"
-            android:paddingBottom="4dp"
-            android:text="$0.00"
-            android:textAppearance="@style/TextAppearance.AppCompat.Body1"
-            android:textColor="@android:color/holo_green_dark"
-            android:textStyle="bold" />
+            android:paddingBottom="4dp">
 
+            <TextView
+                android:id="@+id/product_price"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="$0.00"
+                android:textAppearance="@style/TextAppearance.AppCompat.Body1"
+                android:textColor="@android:color/holo_green_dark"
+                android:textStyle="bold" />
+
+            <ImageButton
+                android:id="@+id/btn_add_to_cart"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:src="@android:drawable/ic_menu_add"
+                app:tint="@android:color/holo_orange_dark"
+                android:contentDescription="Add to cart" />
+
+        </LinearLayout>
         <!-- Rating và số lượng review -->
         <LinearLayout
             android:layout_width="wrap_content"
@@ -83,13 +100,13 @@
 
             <RatingBar
                 android:id="@+id/product_rating"
-                style="?android:attr/ratingBarStyleSmall"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:isIndicator="true"
                 android:numStars="5"
+                android:stepSize="0.5"
                 android:rating="0"
-                android:stepSize="0.5" />
+                android:isIndicator="true"
+                style="?android:attr/ratingBarStyleSmall" />
 
             <TextView
                 android:id="@+id/product_review_count"
@@ -98,29 +115,6 @@
                 android:layout_marginStart="8dp"
                 android:text="0 reviews"
                 android:textAppearance="@style/TextAppearance.AppCompat.Caption" />
-        </LinearLayout>
-
-        <!-- Button Container -->
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:gravity="center"
-            android:orientation="horizontal"
-            android:padding="8dp">
-
-            <!-- Button Thêm vào giỏ -->
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btn_add_to_cart"
-                android:layout_width="0dp"
-                android:layout_height="40dp"
-                android:layout_marginEnd="4dp"
-                android:layout_weight="1"
-                android:text="Add to Cart"
-                android:textSize="12sp"
-                app:backgroundTint="@android:color/holo_green_dark"
-                app:cornerRadius="6dp" />
-
-
         </LinearLayout>
 
     </LinearLayout>
