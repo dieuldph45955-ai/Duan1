@@ -1,9 +1,11 @@
 package thanh.toan.duan1.fragment;
 
+import android.content.BroadcastReceiver;
 import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -17,10 +19,14 @@ import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
-import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
+
+import com.google.gson.Gson;
 
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import retrofit2.Call;
 import retrofit2.Callback;
@@ -28,40 +34,20 @@ import retrofit2.Response;
 import thanh.toan.duan1.R;
 import thanh.toan.duan1.adapter.WishlistAdapter;
 import thanh.toan.duan1.api.ApiService;
+import thanh.toan.duan1.api.apiProducts;
 import thanh.toan.duan1.api.apiProfile;
 import thanh.toan.duan1.model.Product;
 import thanh.toan.duan1.model.User;
-import thanh.toan.duan1.ui.MainActivity;
 
-public class WishlistFragment extends Fragment implements WishlistAdapter.WishlistActionListener {
-
-    private static final String TAG = "WishlistFragment";
-
-    private SwipeRefreshLayout swipeRefreshLayout;
-    private RecyclerView recyclerView;
+public class WishlistFragment extends Fragment {
+    private RecyclerView wishlistRecyclerView;
     private ProgressBar progressBar;
     private LinearLayout emptyLayout;
+    private WishlistAdapter adapter;
+    private List<Product> wishlistProducts;
     private Button btnGoShopping;
 
-    private WishlistAdapter adapter;
-    private final List<Product> wishlistProducts = new ArrayList<>();
-    private apiProfile api;
-    private String token;
-    private Context appContext;
-    private Call<User> currentCall;
-
-    @Override
-    public void onAttach(@NonNull Context context) {
-        super.onAttach(context);
-        appContext = context.getApplicationContext();
-    }
-
-    @Override
-    public void onDetach() {
-        super.onDetach();
-        appContext = null;
-        cancelCurrentCall();
-    }
+    private BroadcastReceiver wishlistReceiver;
 
     @Nullable
     @Override
@@ -70,204 +56,213 @@ public class WishlistFragment extends Fragment implements WishlistAdapter.Wishli
 
         initViews(view);
         setupRecyclerView();
-        setupSwipeRefresh();
-        setupButtons();
-
-        SharedPreferences prefs = requireContext().getSharedPreferences("MyAppPrefs", Context.MODE_PRIVATE);
-        token = prefs.getString("token", null);
-
-        if (token == null) {
-            Toast.makeText(getContext(), "Bạn cần đăng nhập để xem yêu thích", Toast.LENGTH_SHORT).show();
-            showEmptyState();
-        } else {
-            api = ApiService.getApi(requireContext()).create(apiProfile.class);
-            fetchWishlist(false);
-        }
+        loadWishlist();
 
         return view;
     }
 
     private void initViews(View view) {
-        swipeRefreshLayout = view.findViewById(R.id.swipe_refresh);
-        recyclerView = view.findViewById(R.id.wishlist_recycler_view);
+        wishlistRecyclerView = view.findViewById(R.id.wishlist_recycler_view);
         progressBar = view.findViewById(R.id.progress_bar);
         emptyLayout = view.findViewById(R.id.empty_layout);
         btnGoShopping = view.findViewById(R.id.btn_go_shopping);
+        if (btnGoShopping != null) {
+            btnGoShopping.setOnClickListener(v -> {
+                try {
+                    Intent i = new Intent(requireContext(), Class.forName("thanh.toan.duan1.ui.MainActivity"));
+                    startActivity(i);
+                } catch (ClassNotFoundException e) {
+                    if (getActivity() != null) getActivity().finish();
+                }
+            });
+        }
     }
 
     private void setupRecyclerView() {
-        recyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
-        adapter = new WishlistAdapter(requireContext(), wishlistProducts, this);
-        recyclerView.setAdapter(adapter);
-    }
-
-    private void setupSwipeRefresh() {
-        swipeRefreshLayout.setOnRefreshListener(() -> fetchWishlist(true));
-        swipeRefreshLayout.setColorSchemeResources(R.color.purple_500, R.color.teal_700);
-    }
-
-    private void setupButtons() {
-        btnGoShopping.setOnClickListener(v -> {
-            if (getActivity() instanceof MainActivity) {
-                MainActivity mainActivity = (MainActivity) getActivity();
-                mainActivity.getSupportFragmentManager().beginTransaction()
-                        .replace(R.id.fragment_container, new HomeFragment())
-                        .commit();
-                mainActivity.getBottomNavigationView().setSelectedItemId(R.id.navigation_home);
-            }
+        wishlistRecyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
+        wishlistProducts = new ArrayList<>();
+        adapter = new WishlistAdapter(getContext(), wishlistProducts);
+        adapter.setOnRemoveListener(position -> {
+            if (adapter.getItemCount() == 0) showEmptyState();
         });
+        wishlistRecyclerView.setAdapter(adapter);
     }
 
-    private void fetchWishlist(boolean isRefreshing) {
-        if (token == null || api == null) return;
+    private void loadWishlist() {
+        SharedPreferences prefs = requireContext().getSharedPreferences("MyAppPrefs", Context.MODE_PRIVATE);
+        String token = prefs.getString("token", null);
 
-        if (!isRefreshing) {
-            progressBar.setVisibility(View.VISIBLE);
-            recyclerView.setVisibility(View.GONE);
-            emptyLayout.setVisibility(View.GONE);
+        if (token == null) {
+            Toast.makeText(getContext(), "Bạn cần đăng nhập để xem yêu thích", Toast.LENGTH_SHORT).show();
+            showEmptyState();
+            return;
         }
 
-        cancelCurrentCall();
-        currentCall = api.getUserProfile("Bearer " + token);
+        progressBar.setVisibility(View.VISIBLE);
+        wishlistRecyclerView.setVisibility(View.GONE);
+        emptyLayout.setVisibility(View.GONE);
 
-        currentCall.enqueue(new Callback<User>() {
+        apiProfile api = ApiService.getApi(getContext()).create(apiProfile.class);
+        api.getUserProfile().enqueue(new Callback<User>() {
             @Override
-            public void onResponse(@NonNull Call<User> call, @NonNull Response<User> response) {
-                swipeRefreshLayout.setRefreshing(false);
+            public void onResponse(Call<User> call, Response<User> response) {
                 progressBar.setVisibility(View.GONE);
 
-                if (!isAdded() || call.isCanceled()) return;
-
                 if (response.isSuccessful() && response.body() != null) {
-                    List<String> wishlistIds = response.body().getWishlist(); // <-- LIST STRING
+                    User user = response.body();
 
-                    wishlistProducts.clear();
+                    List<Product> products = new ArrayList<>();
+                    List<?> rawWishlist = user.getWishlist();
 
-                    if (wishlistIds == null || wishlistIds.isEmpty()) {
+                    if (rawWishlist == null || rawWishlist.isEmpty()) {
                         showEmptyState();
                         return;
                     }
 
-                    // Load từng product theo ID - update adapter once all requests complete
-                    final int[] pending = {wishlistIds.size()};
-                    for (String id : wishlistIds) {
-                        api.getProductById(id).enqueue(new Callback<Product>() {
-                            @Override
-                            public void onResponse(@NonNull Call<Product> call, @NonNull Response<Product> productResp) {
-                                if (!isAdded()) return;
-                                if (productResp.isSuccessful() && productResp.body() != null) {
-                                    wishlistProducts.add(productResp.body());
-                                } else {
-                                    Log.e(TAG, "Load product failed: " + productResp.code());
+                    Gson gson = new Gson();
+                    List<String> idList = new ArrayList<>();
+
+                    for (Object item : rawWishlist) {
+                        if (item instanceof Product) {
+                            products.add((Product) item);
+                        } else if (item instanceof String) {
+                            idList.add((String) item);
+                        } else {
+                            try {
+                                String json = gson.toJson(item);
+                                Product p = gson.fromJson(json, Product.class);
+                                if (p != null && p.getId() != null) {
+                                    products.add(p);
+                                } else if (p != null && (p.getImages() == null || p.getImages().isEmpty()) && json != null) {
+                                    String trimmed = json.replace("\"", "").trim();
+                                    if (!trimmed.isEmpty()) idList.add(trimmed);
                                 }
-                                pending[0]--;
-                                if (pending[0] == 0) {
-                                    adapter.notifyDataSetChanged();
-                                    if (wishlistProducts.isEmpty()) {
-                                        showEmptyState();
-                                    } else {
-                                        showWishlist();
-                                    }
+                            } catch (Exception ignored) {}
+                        }
+                    }
+
+                    if (!idList.isEmpty()) {
+                        apiProducts prodApi = ApiService.getApi(getContext()).create(apiProducts.class);
+                        AtomicInteger remaining = new AtomicInteger(idList.size());
+
+                        for (String pid : idList) {
+                            if (pid == null) {
+                                if (remaining.decrementAndGet() == 0) {
+                                    finalizeWishlist(products);
                                 }
+                                continue;
                             }
 
-                            @Override
-                            public void onFailure(@NonNull Call<Product> call, @NonNull Throwable t) {
-                                Log.e(TAG, "Load product failed: " + t.getMessage());
-                                pending[0]--;
-                                if (isAdded() && pending[0] == 0) {
-                                    adapter.notifyDataSetChanged();
-                                    if (wishlistProducts.isEmpty()) {
-                                        showEmptyState();
-                                    } else {
-                                        showWishlist();
+                            prodApi.getProductDetail(pid).enqueue(new Callback<Product>() {
+                                @Override
+                                public void onResponse(Call<Product> call, Response<Product> response) {
+                                    if (response.isSuccessful() && response.body() != null) {
+                                        products.add(response.body());
+                                    }
+                                    if (remaining.decrementAndGet() == 0) {
+                                        finalizeWishlist(products);
                                     }
                                 }
-                            }
-                        });
+
+                                @Override
+                                public void onFailure(Call<Product> call, Throwable t) {
+                                    if (remaining.decrementAndGet() == 0) {
+                                        finalizeWishlist(products);
+                                    }
+                                }
+                            });
+                        }
+                    } else {
+                        finalizeWishlist(products);
                     }
 
                 } else {
-                    showToastSafe("Không tải được danh sách yêu thích");
+                    Toast.makeText(getContext(), "Không tải được danh sách yêu thích", Toast.LENGTH_SHORT).show();
                     showEmptyState();
                 }
             }
 
             @Override
-            public void onFailure(@NonNull Call<User> call, @NonNull Throwable t) {
-                swipeRefreshLayout.setRefreshing(false);
+            public void onFailure(Call<User> call, Throwable t) {
                 progressBar.setVisibility(View.GONE);
-                if (!isAdded() || call.isCanceled()) return;
-
-                Log.e(TAG, "API Error: " + t.getMessage());
-//                showToastSafe("Lỗi kết nối: " + t.getMessage());
+                Toast.makeText(getContext(), "Lỗi kết nối: " + t.getMessage(), Toast.LENGTH_SHORT).show();
                 showEmptyState();
             }
         });
     }
 
-    private void cancelCurrentCall() {
-        if (currentCall != null && !currentCall.isCanceled()) currentCall.cancel();
-        currentCall = null;
+    private void finalizeWishlist(List<Product> products) {
+        if (products == null || products.isEmpty()) {
+            showEmptyState();
+            return;
+        }
+        adapter.replaceAll(products);
+        wishlistProducts.clear();
+        wishlistProducts.addAll(products);
+        if (products.isEmpty()) showEmptyState();
+        else showWishlist();
     }
 
     private void showEmptyState() {
-        recyclerView.setVisibility(View.GONE);
+        wishlistRecyclerView.setVisibility(View.GONE);
         emptyLayout.setVisibility(View.VISIBLE);
     }
 
     private void showWishlist() {
-        recyclerView.setVisibility(View.VISIBLE);
+        wishlistRecyclerView.setVisibility(View.VISIBLE);
         emptyLayout.setVisibility(View.GONE);
     }
 
     @Override
     public void onResume() {
         super.onResume();
-        if (token != null) fetchWishlist(false);
+        loadWishlist();
     }
 
     @Override
-    public void onRemove(Product product, int position) {
-        if (api == null || token == null) {
-            showToastSafe("Bạn cần đăng nhập lại");
-            return;
-        }
-
-        api.removeFromWishlist(product.getId(), "Bearer " + token).enqueue(new Callback<User>() {
+    public void onStart() {
+        super.onStart();
+        wishlistReceiver = new BroadcastReceiver() {
             @Override
-            public void onResponse(Call<User> call, Response<User> response) {
-                if (!isAdded()) return;
-
-                if (response.isSuccessful()) {
-                    wishlistProducts.remove(position);
-                    adapter.notifyItemRemoved(position);
-
-                    if (wishlistProducts.isEmpty()) showEmptyState();
-
-                    showToastSafe("Đã xóa khỏi yêu thích");
-                } else {
-                    showToastSafe("Không thể xóa");
+            public void onReceive(Context context, Intent intent) {
+                String action = intent.getStringExtra("action");
+                String productId = intent.getStringExtra("productId");
+                if (action == null) {
+                    loadWishlist();
+                    return;
                 }
-            }
-
-            @Override
-            public void onFailure(Call<User> call, Throwable t) {
-                if (!isAdded()) return;
-//                showToastSafe("Lỗi kết nối: " + t.getMessage());
-            }
-        });
+                switch (action) {
+                    case "remove":
+                        if (productId != null) {
+                            try {
+                                adapter.removeById(productId);
+                                Iterator<Product> it = wishlistProducts.iterator();
+                                while (it.hasNext()) {
+                                    Product pr = it.next();
+                                    if (pr != null && productId.equals(pr.getId())) {
+                                        it.remove();
+                                    }
+                                }
+                            } catch (Exception ignored) {}
+                            if (adapter.getItemCount() == 0) showEmptyState();
+                        }
+                        break;
+                    case "add":
+                        loadWishlist();
+                        break;
+                    default:
+                        loadWishlist();
+                }
+             }
+         };
+        LocalBroadcastManager.getInstance(requireContext()).registerReceiver(wishlistReceiver, new IntentFilter("thanh.toan.duan1.WISHLIST_UPDATED"));
     }
 
-    private long lastToastTime = 0L;
-
-    private void showToastSafe(String message) {
-        if (!isAdded() || appContext == null) return;
-
-        long now = System.currentTimeMillis();
-        if (now - lastToastTime < 1500) return;
-
-        lastToastTime = now;
-        Toast.makeText(appContext, message, Toast.LENGTH_SHORT).show();
-    }
+    @Override
+    public void onStop() {
+        super.onStop();
+        try {
+            LocalBroadcastManager.getInstance(requireContext()).unregisterReceiver(wishlistReceiver);
+        } catch (Exception ignored) {}
+     }
 }

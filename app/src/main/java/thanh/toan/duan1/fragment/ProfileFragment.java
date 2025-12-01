@@ -1,5 +1,6 @@
 package thanh.toan.duan1.fragment;
 
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -14,14 +15,6 @@ import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
-import androidx.fragment.app.FragmentTransaction;
-
-import com.google.android.material.button.MaterialButton;
-import com.google.android.material.card.MaterialCardView;
-import com.google.android.material.textfield.TextInputEditText;
-
-import java.util.HashMap;
-import java.util.Map;
 
 import retrofit2.Call;
 import retrofit2.Callback;
@@ -30,17 +23,18 @@ import thanh.toan.duan1.R;
 import thanh.toan.duan1.api.ApiService;
 import thanh.toan.duan1.api.apiProfile;
 import thanh.toan.duan1.model.User;
+import thanh.toan.duan1.ui.EditProfileActivity;
 import thanh.toan.duan1.ui.LoginActivity;
+import thanh.toan.duan1.ui.MyOrdersActivity;
 
 public class ProfileFragment extends Fragment {
 
     private TextView userNameTextView, userEmailTextView;
-    private Button logoutButton;
-    private MaterialButton btnHistory, btnPersonalDetails, btnPaymentMethod, btnSaveDetails;
-    private MaterialCardView cardPersonalDetails;
-    private TextInputEditText etFullName, etPassword;
-    private String token;
+    private Button logoutButton, myOrdersButton;
+    private static final int REQ_EDIT_PROFILE = 1001;
+    private static final String TAG = "ProfileFragment";
 
+    @SuppressLint("MissingInflatedId")
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater,
@@ -52,77 +46,102 @@ public class ProfileFragment extends Fragment {
         userNameTextView = view.findViewById(R.id.user_name_text_view);
         userEmailTextView = view.findViewById(R.id.user_email_text_view);
         logoutButton = view.findViewById(R.id.logout_button);
-        btnHistory = view.findViewById(R.id.btn_history);
-        btnPersonalDetails = view.findViewById(R.id.btn_personal_details);
-        btnPaymentMethod = view.findViewById(R.id.btn_payment_method);
-        cardPersonalDetails = view.findViewById(R.id.card_personal_details);
-        etFullName = view.findViewById(R.id.et_full_name);
-        etPassword = view.findViewById(R.id.et_password);
-        btnSaveDetails = view.findViewById(R.id.btn_save_details);
-
-        SharedPreferences prefs = requireContext().getSharedPreferences("MyAppPrefs", Context.MODE_PRIVATE);
-        token = prefs.getString("token", null);
+        myOrdersButton = view.findViewById(R.id.btn_history);
 
         loadUserInfo();
-        setupActions();
         setupLogout();
+
+        myOrdersButton.setOnClickListener(v -> {
+            Intent intent = new Intent(getActivity(), MyOrdersActivity.class);
+            startActivity(intent);
+        });
+
+        Button editProfileBtn = view.findViewById(R.id.btn_edit_profile);
+        if (editProfileBtn != null) {
+            editProfileBtn.setOnClickListener(v -> {
+                Intent i = new Intent(getActivity(), EditProfileActivity.class);
+                startActivityForResult(i, REQ_EDIT_PROFILE);
+            });
+        }
 
         return view;
     }
 
-    private void setupActions() {
-        btnPersonalDetails.setOnClickListener(v -> {
-            // Open full-screen PersonalDetailsFragment
-            FragmentTransaction ft = requireActivity().getSupportFragmentManager().beginTransaction();
-            ft.replace(R.id.fragment_container, new PersonalDetailsFragment());
-            ft.addToBackStack(null);
-            ft.commit();
-        });
+    @Override
+    public void onResume() {
+        super.onResume();
+        // ensure data is fresh whenever fragment resumes
+        loadUserInfo();
+    }
 
-        btnSaveDetails.setOnClickListener(v -> {
-            // This button is no longer used if you navigate to separate screen; optionally hide or remove.
-        });
-
-        btnHistory.setOnClickListener(v -> {
-            // Open MyOrdersActivity to show user's order history
-            try {
-                Intent intent = new Intent(requireContext(), thanh.toan.duan1.ui.MyOrdersActivity.class);
-                intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
-                startActivity(intent);
-            } catch (Exception e) {
-                Toast.makeText(getContext(), "Không thể mở lịch sử đơn hàng", Toast.LENGTH_SHORT).show();
-            }
-        });
-
-        btnPaymentMethod.setOnClickListener(v -> {
-            Toast.makeText(getContext(), "Payment method coming soon", Toast.LENGTH_SHORT).show();
-        });
+    @Override
+    public void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == REQ_EDIT_PROFILE && resultCode == getActivity().RESULT_OK) {
+            loadUserInfo();
+        }
     }
 
     private void loadUserInfo() {
-        apiProfile api = ApiService.getApi(requireContext()).create(apiProfile.class);
-        SharedPreferences prefs = requireContext().getSharedPreferences("MyAppPrefs", Context.MODE_PRIVATE);
-        String tk = prefs.getString("token", null);
-        if (tk == null || tk.isEmpty()) {
-            Toast.makeText(getContext(), "Bạn cần đăng nhập", Toast.LENGTH_SHORT).show();
+        SharedPreferences prefs = getContext().getSharedPreferences("MyAppPrefs", Context.MODE_PRIVATE);
+        String token = prefs.getString("token", null); // KEY đúng với LoginActivity
+
+        if (token == null) {
+            Toast.makeText(getContext(), "Bạn chưa đăng nhập!", Toast.LENGTH_SHORT).show();
             return;
         }
-        Call<User> call = api.getUserProfile("Bearer " + tk);
 
-        call.enqueue(new Callback<User>() {
+        apiProfile api = ApiService.getApi(getContext()).create(apiProfile.class);
+        Call<Object> call = api.getUserProfileRaw(); // call raw to handle different backend shapes
+
+        call.enqueue(new Callback<Object>() {
             @Override
-            public void onResponse(Call<User> call, Response<User> response) {
+            public void onResponse(Call<Object> call, Response<Object> response) {
+                android.util.Log.d(TAG, "getUserProfileRaw: code=" + response.code() + " body=" + response.body());
                 if (response.isSuccessful() && response.body() != null) {
-                    User user = response.body();
-                    userNameTextView.setText(user.getFullName() != null ? user.getFullName() : user.getUsername());
-                    userEmailTextView.setText(user.getEmail() != null ? user.getEmail() : "");
+                    Object body = response.body();
+                    // backend may return either the user object directly or { message, user }
+                    try {
+                        com.google.gson.Gson gson = new com.google.gson.Gson();
+                        // First try to convert directly to User
+                        User user = null;
+                        try {
+                          user = gson.fromJson(gson.toJson(body), User.class);
+                        } catch (Exception e) { /* ignore */ }
+
+                        // If the parsed user has no id or username, check wrapper
+                        if (user == null || (user.getId() == null && user.getUsername() == null && user.getEmail()==null)) {
+                          try {
+                            java.util.Map map = gson.fromJson(gson.toJson(body), java.util.Map.class);
+                            if (map != null && map.get("user") != null) {
+                              user = gson.fromJson(gson.toJson(map.get("user")), User.class);
+                            }
+                          } catch (Exception ignored) {}
+                        }
+
+                        if (user != null) {
+                            android.util.Log.d(TAG, "Parsed user id=" + user.getId() + " fullName=" + user.getFullName());
+                            userNameTextView.setText(user.getFullName() != null ? user.getFullName() : user.getUsername());
+                            userEmailTextView.setText(user.getEmail() != null ? user.getEmail() : "");
+                            return;
+                        }
+                    } catch (Exception ignored) {}
+
+                    String err = "";
+                    try { if (response.errorBody()!=null) err = response.errorBody().string(); } catch (Exception ignored) {}
+                    android.util.Log.w(TAG, "Could not parse profile response; err="+err);
+                    Toast.makeText(getContext(), "Không tải được thông tin!", Toast.LENGTH_SHORT).show();
                 } else {
+                    String err = "";
+                    try { if (response.errorBody()!=null) err = response.errorBody().string(); } catch (Exception ignored) {}
+                    android.util.Log.w(TAG, "getUserProfileRaw failed code="+response.code()+" err="+err);
                     Toast.makeText(getContext(), "Không tải được thông tin!", Toast.LENGTH_SHORT).show();
                 }
             }
 
             @Override
-            public void onFailure(Call<User> call, Throwable t) {
+            public void onFailure(Call<Object> call, Throwable t) {
+                android.util.Log.e(TAG, "getUserProfileRaw onFailure", t);
                 Toast.makeText(getContext(), "Lỗi kết nối server!", Toast.LENGTH_SHORT).show();
             }
         });
@@ -131,7 +150,7 @@ public class ProfileFragment extends Fragment {
     private void setupLogout() {
         logoutButton.setOnClickListener(v -> {
             SharedPreferences prefs = getContext().getSharedPreferences("MyAppPrefs", Context.MODE_PRIVATE);
-            prefs.edit().remove("token").apply();
+            prefs.edit().remove("token").apply(); // KEY đúng
 
             Intent intent = new Intent(getActivity(), LoginActivity.class);
             startActivity(intent);

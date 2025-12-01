@@ -7,11 +7,16 @@
     app:cardCornerRadius="12dp"
     app:cardUseCompatPadding="true"
     app:strokeWidth="1dp"
-    app:strokeColor="@color/purple_200">
+    app:strokeColor="@color/purple_200"
+    android:clickable="false"
+    android:focusable="false">
 
     <RelativeLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:descendantFocusability="afterDescendants"
+        android:clickable="false"
+        android:focusable="false"
         android:padding="12dp">
 
         <ImageView
@@ -69,20 +74,23 @@
                     android:layout_height="wrap_content"
                     android:text="Xem chi tiết" />
 
-                <ImageButton
+                <!-- remove background ripple to avoid visible circular overlay when tapped -->
+                <ImageView
                     android:id="@+id/btn_remove"
-                    android:layout_width="40dp"
-                    android:layout_height="40dp"
+                    android:layout_width="44dp"
+                    android:layout_height="44dp"
                     android:layout_marginStart="8dp"
-                    android:background="@android:color/transparent"
-                    android:contentDescription="Remove"
+                    android:background="@null"
+                    android:clickable="true"
+                    android:focusableInTouchMode="false"
+                    android:focusable="false"
+                    android:contentDescription="@string/favorite"
                     android:padding="8dp"
                     android:src="@drawable/ic_favorite_filled"
-                    android:tint="@color/red_500" />
+                    app:tint="@color/red_500" />
             </LinearLayout>
         </LinearLayout>
 
     </RelativeLayout>
 
 </com.google.android.material.card.MaterialCardView>
-
