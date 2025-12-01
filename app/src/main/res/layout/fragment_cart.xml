@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:orientation="vertical"
+    android:layout_width="match_parent"
+    android:layout_marginTop="20dp"
+    android:layout_height="match_parent"
+    android:padding="16dp"
+    android:background="@color/md_theme_background">
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/cart_title"
+        style="@style/TextAppearance.Duan1.Title"
+        android:layout_marginBottom="8dp" />
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/cart_recycler_view"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1" />
+
+    <!-- Total price row -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingTop="8dp"
+        android:paddingBottom="8dp">
+
+<!--        <TextView-->
+<!--            android:id="@+id/cart_total_label"-->
+<!--            android:layout_width="wrap_content"-->
+<!--            android:layout_height="wrap_content"-->
+<!--            android:text="Tổng"-->
+<!--            style="@style/TextAppearance.Duan1.Subtitle" />-->
+
+        <TextView
+            android:id="@+id/cart_total_price"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:text="0 VND"
+            style="@style/TextAppearance.Duan1.Price" />
+
+    </LinearLayout>
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/cart_checkout_button"
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:text="@string/continue_shopping"
+        android:background="@drawable/bg_btn_rounded"
+        android:textColor="@color/md_theme_onPrimary" />
+
+</LinearLayout>

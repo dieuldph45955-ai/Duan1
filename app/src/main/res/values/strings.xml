@@ -1,4 +1,38 @@
 <resources>
     <string name="app_name">My Application</string>
-    <string name="favorite" />
+    <string name="favorite">Yêu thích</string>
+    <string name="my_orders_title">Đơn hàng của tôi</string>
+    <string name="back">Quay lại</string>
+
+    <!-- Wishlist strings -->
+    <string name="wishlist_title">Danh sách yêu thích</string>
+    <string name="wishlist_empty_title">Danh sách yêu thích trống</string>
+    <string name="wishlist_empty_subtitle">Nhấn vào icon trái tim để lưu sản phẩm tại đây</string>
+    <string name="continue_shopping">Tiếp tục mua sắm</string>
+    <string name="cart_title">Giỏ hàng</string>
+    <string name="no_category">Không có danh mục</string>
+    <string name="reviews_count">%d đánh giá</string>
+
+    <!-- Cart / Item strings -->
+    <string name="total_label">Tổng</string>
+    <string name="currency_format">%s VND</string>
+    <string name="default_product_name">Tên sản phẩm</string>
+    <string name="decrease">Giảm</string>
+    <string name="increase">Tăng</string>
+    <string name="delete">Xóa</string>
+    <string name="one">1</string>
+
+    <!-- Home/Profile strings -->
+    <string name="home_title">Danh sách sản phẩm</string>
+    <string name="user_name">User Name</string>
+    <string name="user_email">user.email@example.com</string>
+    <string name="add">Thêm</string>
+
+    <!-- Edit Profile strings -->
+    <string name="edit_profile_full_name_hint">Họ và tên</string>
+    <string name="edit_profile_email_hint">Email</string>
+    <string name="edit_profile_phone_hint">Số điện thoại</string>
+    <string name="edit_profile_address_hint">Địa chỉ</string>
+    <string name="edit_profile_new_password_hint">Mật khẩu mới (để trống để giữ nguyên)</string>
+    <string name="save">Lưu</string>
 </resources>

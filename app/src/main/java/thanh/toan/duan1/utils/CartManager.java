@@ -67,7 +67,7 @@ public class CartManager {
             saveCart(cart);
         }
     }
-    
+
     public void clearCart() {
         prefs.edit().remove(KEY_CART).apply();
     }
@@ -77,3 +77,4 @@ public class CartManager {
         prefs.edit().putString(KEY_CART, json).apply();
     }
 }
+

@@ -1,6 +1,8 @@
 package thanh.toan.duan1.model;
 
 import java.util.Map;
+import java.util.Objects;
+import thanh.toan.duan1.model.Product;
 
 public class OrderItem {
     private Object product;
@@ -33,22 +35,38 @@ public class OrderItem {
 
     public String getProductName() {
         if (product == null) return "Sản phẩm không tồn tại";
-        
+
+        // Nếu chỉ là id chuỗi
         if (product instanceof String) {
             return "Sản phẩm (Đang cập nhật)";
         }
-        
-        if (product instanceof Map) {
-            Map<?, ?> map = (Map<?, ?>) product;
-            Object name = map.get("name");
-            return name != null ? name.toString() : "Sản phẩm không tên";
-        }
-        
-        // Trường hợp Gson parse được thành Product (nếu cấu hình custom adapter, nhưng ở đây default là Map)
+
+        // Nếu Gson parse thành Product object
         if (product instanceof Product) {
-            return ((Product) product).getName();
+            String name = ((Product) product).getName();
+            return name != null ? name : "Sản phẩm không tên";
         }
 
-        return "Sản phẩm";
+        // Nếu Gson parse thành Map (thông thường khi server trả object)
+        if (product instanceof Map) {
+            Map<?, ?> map = (Map<?, ?>) product;
+            // trường hợp product: { product: { name: ... } } hoặc trực tiếp { name: ... }
+            Object nested = map.get("product");
+            if (nested instanceof Map) {
+                Object name = ((Map<?, ?>) nested).get("name");
+                if (name != null) return name.toString();
+            }
+            Object name = map.get("name");
+            if (name != null) return name.toString();
+
+            // thử các khóa khác
+            Object title = map.get("title");
+            if (title != null) return title.toString();
+
+            return "Sản phẩm không tên";
+        }
+
+        // Fallback
+        return Objects.toString(product, "Sản phẩm");
     }
 }

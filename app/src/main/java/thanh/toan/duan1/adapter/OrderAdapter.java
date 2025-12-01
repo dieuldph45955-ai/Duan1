@@ -107,12 +107,14 @@ public class OrderAdapter extends RecyclerView.Adapter<OrderAdapter.OrderViewHol
         Long total = order.getTotalPrice();
         holder.tvTotal.setText(vn.format(total != null ? total : 0) + " đ");
 
-        // Tóm tắt sản phẩm
+        // Tóm tắt sản phẩm - handle OrderItem which has flexible product type
         StringBuilder summary = new StringBuilder();
         if (order.getItems() != null) {
             for (OrderItem item : order.getItems()) {
-                summary.append("- ").append(item.getProductName())
-                       .append(" x").append(item.getQuantity()).append("\n");
+                if (item == null) continue;
+                String prodName = item.getProductName();
+                long qty = item.getQuantity() != null ? item.getQuantity() : 0L;
+                summary.append("- ").append(prodName).append(" x").append(qty).append("\n");
             }
         }
         holder.tvItemsSummary.setText(summary.toString().trim());

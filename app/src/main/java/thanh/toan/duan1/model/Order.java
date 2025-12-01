@@ -2,13 +2,18 @@
 
 package thanh.toan.duan1.model;
 
+import com.google.gson.annotations.SerializedName;
+
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
 
 public class Order {
+    @SerializedName("_id")
     private String id;
-    private User user;
-    private List<Item> items;
+    // user can be either a String id or an object; keep as Object to avoid parse errors
+    private Object user;
+    private List<OrderItem> items;
     private Long totalPrice;
     private String status;
     private String shippingAddress;
@@ -26,19 +31,59 @@ public class Order {
         this.id = value;
     }
 
-    public User getUser() {
+    // raw user object (may be String id, Map or User)
+    public Object getUserRaw() {
         return user;
     }
 
-    public void setUser(User value) {
+    // Setter accepts flexible types
+    public void setUser(Object value) {
         this.user = value;
     }
 
-    public List<Item> getItems() {
+    // Try to extract user id regardless of type
+    public String getUserId() {
+        if (user == null) return null;
+        if (user instanceof String) return (String) user;
+        if (user instanceof Map) {
+            Map map = (Map) user;
+            Object idObj = null;
+            if (map.containsKey("_id")) idObj = map.get("_id");
+            if (idObj == null && map.containsKey("id")) idObj = map.get("id");
+            return idObj != null ? idObj.toString() : null;
+        }
+        if (user instanceof User) return ((User) user).getId();
+        // fallback
+        return user.toString();
+    }
+
+    // Try to extract user display name
+    public String getUserDisplayName() {
+        if (user == null) return null;
+        if (user instanceof String) return (String) user;
+        if (user instanceof Map) {
+            Map map = (Map) user;
+            Object name = null;
+            if (map.containsKey("fullName")) name = map.get("fullName");
+            if (name == null && map.containsKey("username")) name = map.get("username");
+            if (name == null && map.containsKey("email")) name = map.get("email");
+            return name != null ? name.toString() : getUserId();
+        }
+        if (user instanceof User) {
+            User u = (User) user;
+            if (u.getFullName() != null) return u.getFullName();
+            if (u.getUsername() != null) return u.getUsername();
+            if (u.getEmail() != null) return u.getEmail();
+            return u.getId();
+        }
+        return user.toString();
+    }
+
+    public List<OrderItem> getItems() {
         return items;
     }
 
-    public void setItems(List<Item> value) {
+    public void setItems(List<OrderItem> value) {
         this.items = value;
     }
 
@@ -106,4 +151,3 @@ public class Order {
         this.v = value;
     }
 }
-
