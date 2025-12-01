@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Theme.Duan1 is defined in res/values/themes.xml; this file contains textAppearance and widget styles only. -->
+
+    <style name="Widget.Duan1.MaterialCardView" parent="Widget.MaterialComponents.CardView">
+        <item name="cardCornerRadius">@dimen/card_corner</item>
+        <item name="cardUseCompatPadding">true</item>
+        <item name="cardElevation">@dimen/card_elevation</item>
+    </style>
+
+    <style name="TextAppearance.Duan1.Title" parent="TextAppearance.MaterialComponents.Body1">
+        <item name="android:textSize">@dimen/text_size_title</item>
+        <item name="android:textColor">@color/md_theme_onSurface</item>
+    </style>
+
+    <style name="TextAppearance.Duan1.Subtitle" parent="TextAppearance.MaterialComponents.Body2">
+        <item name="android:textSize">@dimen/text_size_subtitle</item>
+        <item name="android:textColor">@color/mutedText</item>
+    </style>
+
+    <style name="TextAppearance.Duan1.Price" parent="TextAppearance.MaterialComponents.Body1">
+        <item name="android:textSize">@dimen/text_size_price</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:textColor">@color/priceColor</item>
+    </style>
+
+    <style name="TextAppearance.Duan1.Caption" parent="TextAppearance.MaterialComponents.Caption">
+        <item name="android:textSize">@dimen/text_size_caption</item>
+        <item name="android:textColor">@color/mutedText</item>
+    </style>
+</resources>
