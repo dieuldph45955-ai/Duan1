@@ -25,7 +25,7 @@
             android:layout_height="88dp"
             android:scaleType="centerCrop"
             android:src="@drawable/ic_launcher_background"
-            android:contentDescription="@string/app_name" />
+            android:contentDescription="@string/default_product_name" />
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -38,7 +38,7 @@
                 android:id="@+id/product_name"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Tên sản phẩm"
+                android:text="@string/default_product_name"
                 android:textStyle="bold"
                 android:textAppearance="@style/TextAppearance.AppCompat.Medium"
                 android:maxLines="2"
@@ -49,7 +49,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="4dp"
-                android:text="150.000đ"
+                android:text="@string/one"
                 android:textColor="@color/red_500"
                 android:textStyle="bold" />
 
@@ -58,7 +58,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="2dp"
-                android:text="Danh mục"
+                android:text="@string/no_category"
                 android:textColor="@android:color/darker_gray" />
 
             <LinearLayout
@@ -72,7 +72,7 @@
                     style="@style/Widget.MaterialComponents.Button.TextButton"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Xem chi tiết" />
+                    android:text="@string/continue_shopping" />
 
                 <!-- remove background ripple to avoid visible circular overlay when tapped -->
                 <ImageView
@@ -82,8 +82,8 @@
                     android:layout_marginStart="8dp"
                     android:background="@null"
                     android:clickable="true"
-                    android:focusableInTouchMode="false"
-                    android:focusable="false"
+                    android:focusable="true"
+                    android:focusableInTouchMode="true"
                     android:contentDescription="@string/favorite"
                     android:padding="8dp"
                     android:src="@drawable/ic_favorite_filled"

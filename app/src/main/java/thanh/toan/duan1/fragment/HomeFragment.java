@@ -37,7 +37,7 @@ import retrofit2.Response;
 import thanh.toan.duan1.R;
 import thanh.toan.duan1.adapter.ProductAdapter;
 import thanh.toan.duan1.api.ApiService;
-import thanh.toan.duan1.api.apiCategories;
+import thanh.toan.duan1.api.ApiCategories;
 import thanh.toan.duan1.api.apiProducts;
 import thanh.toan.duan1.api.apiProfile;
 import thanh.toan.duan1.model.Category;
@@ -184,21 +184,25 @@ public class HomeFragment extends Fragment {
     }
 
     private void loadCategories() {
-        apiCategories catApi = ApiService.getApi(requireContext()).create(apiCategories.class);
-        catApi.getCategories().enqueue(new Callback<List<Category>>() {
+        // create service explicitly with fully-qualified types to avoid analyzer issues
+        thanh.toan.duan1.api.ApiCategories catService = ApiService.getApi(requireContext())
+                .create(thanh.toan.duan1.api.ApiCategories.class);
+
+        retrofit2.Call<java.util.List<thanh.toan.duan1.model.Category>> catCall = catService.getCategories();
+
+        catCall.enqueue(new retrofit2.Callback<java.util.List<thanh.toan.duan1.model.Category>>() {
             @Override
-            public void onResponse(@NonNull Call<List<Category>> call, @NonNull Response<List<Category>> response) {
+            public void onResponse(@NonNull retrofit2.Call<java.util.List<thanh.toan.duan1.model.Category>> call, @NonNull retrofit2.Response<java.util.List<thanh.toan.duan1.model.Category>> response) {
                 if (response.isSuccessful() && response.body() != null) {
                     categories.clear();
                     categories.addAll(response.body());
 
-                    // Remove excluded categories (Áo Nữ, Quần Nữ) — normalize to ignore diacritics
+                    // Remove "Quần Nữ" from the spinner: normalize names to compare without diacritics
                     Iterator<Category> it = categories.iterator();
                     while (it.hasNext()) {
                         Category c = it.next();
                         if (c == null || c.getName() == null) continue;
-                        String n = normalize(c.getName());
-                        if ("ao nu".equals(n) || "quan nu".equals(n)) {
+                        if ("quan nu".equals(normalize(c.getName()))) {
                             it.remove();
                         }
                     }

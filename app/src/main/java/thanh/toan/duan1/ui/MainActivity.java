@@ -17,7 +17,7 @@ import com.google.android.material.bottomnavigation.BottomNavigationView;
 import thanh.toan.duan1.R;
 import thanh.toan.duan1.fragment.CartFragment;
 import thanh.toan.duan1.fragment.HomeFragment;
-import thanh.toan.duan1.fragment.ProfileFragment;
+//import thanh.toan.duan1.fragment.ProfileFragment;
 import thanh.toan.duan1.fragment.WishlistFragment;
 
 public class MainActivity extends AppCompatActivity {
@@ -35,7 +35,7 @@ public class MainActivity extends AppCompatActivity {
             } else if (itemId == R.id.navigation_wishlist) {
                 selectedFragment = new WishlistFragment();
             } else if (itemId == R.id.navigation_profile) {
-                selectedFragment = new ProfileFragment();
+//                selectedFragment = new ProfileFragment();
             }
 
             if (selectedFragment != null) {
@@ -55,13 +55,13 @@ public class MainActivity extends AppCompatActivity {
 
         // If caller requested to open Profile (from MyOrders back), respect the intent extra
         boolean openProfile = getIntent().getBooleanExtra("openProfile", false);
-        if (openProfile) {
-            getSupportFragmentManager()
-                    .beginTransaction()
-                    .replace(R.id.fragment_container, new ProfileFragment())
-                    .commit();
-            return;
-        }
+//        if (openProfile) {
+//            getSupportFragmentManager()
+//                    .beginTransaction()
+//                    .replace(R.id.fragment_container, new ProfileFragment())
+//                    .commit();
+//            return;
+//        }
 
         // Set HomeFragment as the default
         if (savedInstanceState == null) {

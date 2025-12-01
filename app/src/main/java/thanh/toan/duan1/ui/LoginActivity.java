@@ -41,7 +41,7 @@ public class LoginActivity extends AppCompatActivity {
         editPassword = findViewById(R.id.editTextPassword);
         btnLogin = findViewById(R.id.buttonLogin);
         tvRegister = findViewById(R.id.textViewRegister);
-        tvForgot = findViewById(R.id.textViewForgotPassword);
+//        tvForgot = findViewById(R.id.textViewForgotPassword);
         cbRemember = findViewById(R.id.cbRemember); // cần thêm checkbox Remember trong layout
 
         api = ApiService.getApi(this).create(ApiLogin.class);
@@ -51,7 +51,7 @@ public class LoginActivity extends AppCompatActivity {
 
         btnLogin.setOnClickListener(v -> loginUser());
         tvRegister.setOnClickListener(v -> register());
-        tvForgot.setOnClickListener(v -> forgotPassword());
+//        tvForgot.setOnClickListener(v -> forgotPassword());
     }
 
     private void loadSavedAccount() {
@@ -64,10 +64,10 @@ public class LoginActivity extends AppCompatActivity {
         editPassword.setText(savedPassword);
         cbRemember.setChecked(remember);
     }
-
-    private void forgotPassword() {
-        startActivity(new Intent(this, ForgotPasswordActivity.class));
-    }
+//
+//    private void forgotPassword() {
+//        startActivity(new Intent(this, ForgotPasswordActivity.class));
+//    }
 
     private void register() {
         startActivity(new Intent(this, RegisterActivity.class));
