@@ -4,8 +4,6 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.util.Log;
-import android.view.View;
-import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 import android.widget.ImageButton;
@@ -16,11 +14,12 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import okhttp3.ResponseBody;
@@ -50,13 +49,13 @@ public class MyOrdersActivity extends AppCompatActivity implements OrderAdapter.
         // Ánh xạ view
         recyclerView = findViewById(R.id.orders_recycler_view);
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
-        
+
         // Khởi tạo adapter với listener (this)
         adapter = new OrderAdapter(this, orderList, this);
         recyclerView.setAdapter(adapter);
 
         api = ApiService.getApi(this).create(apiOrder.class);
-        
+
         btnBack = findViewById(R.id.btn_back);
         if (btnBack != null) {
             btnBack.setOnClickListener(v -> {
@@ -197,18 +196,38 @@ public class MyOrdersActivity extends AppCompatActivity implements OrderAdapter.
 
         Log.d("CancelOrder", "Cancelling order " + order.getID() + " with reason: " + reason);
 
-        // Tạo object Order chứa status mới để gửi lên server
-        Order statusUpdate = new Order();
-        statusUpdate.setStatus("Cancelled");
+        // Send minimal payload { status: "cancelled" } (match server enum case-insensitively)
+        Map<String, String> statusUpdate = new HashMap<>();
+        statusUpdate.put("status", "cancelled");
 
         api.updateOrderStatus("Bearer " + token, order.getID(), statusUpdate).enqueue(new Callback<Order>() {
             @Override
             public void onResponse(Call<Order> call, Response<Order> response) {
                 if (response.isSuccessful()) {
                     Toast.makeText(MyOrdersActivity.this, "Đã hủy đơn hàng thành công", Toast.LENGTH_SHORT).show();
-                    fetchMyOrders(); // Tải lại danh sách sau khi hủy
+                    // Sau khi hủy thành công: hỏi người dùng có muốn xóa hoá đơn không
+                    new androidx.appcompat.app.AlertDialog.Builder(MyOrdersActivity.this)
+                            .setTitle("Đã hủy đơn hàng")
+                            .setMessage("Bạn có muốn xóa hoá đơn này khỏi lịch sử không?")
+                            .setPositiveButton("Xóa hoá đơn", (dialog, which) -> {
+                                // Gọi API xóa
+                                deleteOrder(order);
+                            })
+                            .setNegativeButton("Giữ lại", (dialog, which) -> {
+                                // Chỉ làm mới danh sách
+                                fetchMyOrders();
+                            })
+                            .setCancelable(false)
+                            .show();
                 } else {
-                    Toast.makeText(MyOrdersActivity.this, "Không thể hủy đơn hàng: " + response.code(), Toast.LENGTH_SHORT).show();
+                    String err = "Không thể hủy đơn hàng: " + response.code();
+                    try (ResponseBody eb = response.errorBody()) {
+                        if (eb != null) {
+                            String body = eb.string();
+                            if (!body.isEmpty()) err += " - " + body;
+                        }
+                    } catch (Exception ignored) {}
+                    Toast.makeText(MyOrdersActivity.this, err, Toast.LENGTH_LONG).show();
                 }
             }
 
@@ -230,29 +249,48 @@ public class MyOrdersActivity extends AppCompatActivity implements OrderAdapter.
     }
 
     private void deleteOrder(Order order) {
-        // Xử lý xóa local vì server trả về 404 (endpoint không tồn tại hoặc lỗi)
-        saveDeletedOrder(order.getID());
-        
-        // Cập nhật UI ngay lập tức
-        orderList.remove(order);
-        adapter.notifyDataSetChanged();
-        
-        Toast.makeText(MyOrdersActivity.this, "Đã xóa đơn hàng khỏi danh sách", Toast.LENGTH_SHORT).show();
-        
-        // Vẫn thử gọi API để nếu server sửa lỗi thì sẽ hoạt động, nhưng không chặn UI bằng callback
+        // First, attempt to delete on server. Only if server confirms delete, remove locally.
         SharedPreferences pref = getSharedPreferences("MyAppPrefs", Context.MODE_PRIVATE);
         String token = pref.getString("token", "");
+
         api.deleteOrder("Bearer " + token, order.getID()).enqueue(new Callback<ResponseBody>() {
             @Override
             public void onResponse(Call<ResponseBody> call, Response<ResponseBody> response) {
-                // Log kết quả để debug nhưng không cần báo lỗi cho user nữa vì đã xóa local rồi
-                if (!response.isSuccessful()) {
-                    Log.w("DeleteOrder", "Server delete failed: " + response.code());
+                if (response.isSuccessful()) {
+                    // remove locally and persist that it's deleted
+                    saveDeletedOrder(order.getID());
+                    orderList.remove(order);
+                    adapter.notifyDataSetChanged();
+                    Toast.makeText(MyOrdersActivity.this, "Đã xóa đơn hàng", Toast.LENGTH_SHORT).show();
+                } else {
+                    int code = response.code();
+                    String serverMsg = null;
+                    try (ResponseBody err = response.errorBody()) {
+                        if (err != null) serverMsg = err.string();
+                    } catch (Exception ignored) {}
+
+                    if (code == 404) {
+                        // not found on server — remove locally
+                        saveDeletedOrder(order.getID());
+                        orderList.remove(order);
+                        adapter.notifyDataSetChanged();
+                        Toast.makeText(MyOrdersActivity.this, "Đơn hàng không tồn tại trên server. Đã xóa local.", Toast.LENGTH_SHORT).show();
+                    } else if (code == 403) {
+                        Toast.makeText(MyOrdersActivity.this, "Bạn không có quyền xóa đơn này.", Toast.LENGTH_LONG).show();
+                    } else if (code == 400) {
+                        String msg = "Không thể xóa: " + (serverMsg != null && !serverMsg.isEmpty() ? serverMsg : "Yêu cầu không hợp lệ");
+                        Toast.makeText(MyOrdersActivity.this, msg, Toast.LENGTH_LONG).show();
+                    } else {
+                        String msg = "Lỗi khi xóa đơn: " + code + (serverMsg != null ? (" - " + serverMsg) : "");
+                        Toast.makeText(MyOrdersActivity.this, msg, Toast.LENGTH_LONG).show();
+                    }
                 }
             }
+
             @Override
             public void onFailure(Call<ResponseBody> call, Throwable t) {
-                Log.w("DeleteOrder", "Server delete error: " + t.getMessage());
+                // network error — do not remove local, inform user
+                Toast.makeText(MyOrdersActivity.this, "Lỗi kết nối khi xóa: " + t.getMessage(), Toast.LENGTH_LONG).show();
             }
         });
     }

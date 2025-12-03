@@ -1,6 +1,7 @@
 package thanh.toan.duan1.api;
 
 import java.util.List;
+import java.util.Map;
 
 import okhttp3.ResponseBody;
 import retrofit2.Call;
@@ -28,9 +29,9 @@ public interface apiOrder {
     @GET("ordersAdmin")
     Call<List<Order>> getAllOrdersAdmin(@Header("Authorization") String token);
 
-    // Cập nhật trạng thái đơn hàng (Admin/User Cancel)
+    // Cập nhật trạng thái đơn hàng (Admin/User Cancel) - accept Map to send { status: "..." }
     @PUT("orders/{id}/status")
-    Call<Order> updateOrderStatus(@Header("Authorization") String token, @Path("id") String orderId, @Body Order statusWrapper);
+    Call<Order> updateOrderStatus(@Header("Authorization") String token, @Path("id") String orderId, @Body Map<String, String> statusBody);
 
     // Xóa đơn hàng (chỉ dành cho đơn đã hủy)
     @DELETE("orders/{id}")

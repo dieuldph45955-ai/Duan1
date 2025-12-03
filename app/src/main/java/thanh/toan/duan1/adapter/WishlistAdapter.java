@@ -107,17 +107,6 @@ public class WishlistAdapter extends RecyclerView.Adapter<WishlistAdapter.VH> {
             holder.remove.setEnabled(true);
         }
 
-        holder.viewDetail.setOnClickListener(v -> {
-            long now = SystemClock.uptimeMillis();
-            if (now - lastViewDetailClick < CLICK_DEBOUNCE_MS) return;
-            lastViewDetailClick = now;
-
-            Intent intent = new Intent(context, ProductDetailActivity.class);
-            intent.putExtra("productId", p.getId());
-            // indicate we're opening detail from the wishlist so the detail screen can hide wishlist controls
-            intent.putExtra("from_wishlist", true);
-            context.startActivity(intent);
-        });
 
         holder.remove.setOnClickListener(v -> {
             int pos = holder.getBindingAdapterPosition();
@@ -256,7 +245,7 @@ public class WishlistAdapter extends RecyclerView.Adapter<WishlistAdapter.VH> {
     static class VH extends RecyclerView.ViewHolder {
         ImageView image;
         TextView name, price, category;
-        Button viewDetail;
+
         ImageView remove;
 
         public VH(@NonNull View itemView) {
@@ -265,7 +254,7 @@ public class WishlistAdapter extends RecyclerView.Adapter<WishlistAdapter.VH> {
             name = itemView.findViewById(R.id.product_name);
             price = itemView.findViewById(R.id.product_price);
             category = itemView.findViewById(R.id.product_category);
-            viewDetail = itemView.findViewById(R.id.btn_view_detail);
+
             remove = itemView.findViewById(R.id.btn_remove);
         }
     }
