@@ -31,7 +31,7 @@ import retrofit2.Callback;
 import retrofit2.Response;
 import thanh.toan.duan1.R;
 import thanh.toan.duan1.api.ApiService;
-import thanh.toan.duan1.api.apiOrder;
+import thanh.toan.duan1.api.apiCart;
 import thanh.toan.duan1.model.Item;
 import thanh.toan.duan1.model.Order;
 import thanh.toan.duan1.model.Product;
@@ -47,6 +47,8 @@ public class CartFragment extends Fragment {
     private Button checkoutButton;
     private CartManager cartManager;
     private List<Item> cartItems;
+    private apiCart apiCartService;
+    private String bearerToken;
 
     @Nullable
     @Override
@@ -58,7 +60,19 @@ public class CartFragment extends Fragment {
         checkoutButton = view.findViewById(R.id.cart_checkout_button);
 
         cartManager = new CartManager(getContext());
-        cartItems = cartManager.getCart();
+        cartItems = new ArrayList<>();
+
+        // prepare API service if user logged in
+        SharedPreferences pref = getContext().getSharedPreferences("MyAppPrefs", Context.MODE_PRIVATE);
+        String token = pref.getString("token", "");
+        if (token != null && !token.isEmpty()) {
+            bearerToken = "Bearer " + token;
+            apiCartService = ApiService.getApi(getContext()).create(apiCart.class);
+            fetchCartFromServer();
+        } else {
+            // fallback to local cart
+            cartItems = cartManager.getCart();
+        }
 
         recyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
         adapter = new CartAdapter(getContext(), cartItems);
@@ -78,11 +92,42 @@ public class CartFragment extends Fragment {
         return view;
     }
 
+    private void fetchCartFromServer() {
+        if (apiCartService == null || bearerToken == null) return;
+        apiCartService.getCart(bearerToken).enqueue(new Callback<java.util.List<Item>>() {
+            @Override
+            public void onResponse(Call<java.util.List<Item>> call, Response<java.util.List<Item>> response) {
+                if (response.isSuccessful() && response.body() != null) {
+                    cartItems.clear();
+                    cartItems.addAll(response.body());
+                    if (adapter != null) adapter.notifyDataSetChanged();
+                    calculateTotal();
+                } else {
+                    // fallback to local if server fails
+                    cartItems.clear();
+                    cartItems.addAll(cartManager.getCart());
+                    if (adapter != null) adapter.notifyDataSetChanged();
+                    calculateTotal();
+                }
+            }
+
+            @Override
+            public void onFailure(Call<java.util.List<Item>> call, Throwable t) {
+                cartItems.clear();
+                cartItems.addAll(cartManager.getCart());
+                if (adapter != null) adapter.notifyDataSetChanged();
+                calculateTotal();
+            }
+        });
+    }
+
     @Override
     public void onResume() {
         super.onResume();
         // Refresh cart data when returning to this screen
-        if (cartManager != null) {
+        if (bearerToken != null && apiCartService != null) {
+            fetchCartFromServer();
+        } else if (cartManager != null) {
             cartItems.clear();
             cartItems.addAll(cartManager.getCart());
             if (adapter != null) {
@@ -158,8 +203,31 @@ public class CartFragment extends Fragment {
                 int newQuantity = item.getQuantity().intValue() + 1;
                 item.setQuantity((long) newQuantity);
                 cartManager.updateQuantity(position, newQuantity);
-                notifyItemChanged(position);
-                calculateTotal();
+                if (bearerToken != null) {
+                    java.util.Map<String, Object> body = new java.util.HashMap<>();
+                    body.put("quantity", newQuantity);
+                    apiCartService.updateCartItem(bearerToken, item.getId(), body).enqueue(new Callback<Item>() {
+                        @Override
+                        public void onResponse(Call<Item> call, Response<Item> response) {
+                            if (response.isSuccessful() && response.body() != null) {
+                                // Update local cart manager
+                                cartManager.updateQuantity(position, newQuantity);
+                                notifyItemChanged(position);
+                                calculateTotal();
+                            } else {
+                                Toast.makeText(context, "Cập nhật số lượng thất bại", Toast.LENGTH_SHORT).show();
+                            }
+                        }
+
+                        @Override
+                        public void onFailure(Call<Item> call, Throwable t) {
+                            Toast.makeText(context, "Lỗi kết nối", Toast.LENGTH_SHORT).show();
+                        }
+                    });
+                } else {
+                    notifyItemChanged(position);
+                    calculateTotal();
+                }
             });
 
             holder.decreaseButton.setOnClickListener(v -> {
@@ -168,8 +236,31 @@ public class CartFragment extends Fragment {
                     int newQuantity = currentQuantity - 1;
                     item.setQuantity((long) newQuantity);
                     cartManager.updateQuantity(position, newQuantity);
-                    notifyItemChanged(position);
-                    calculateTotal();
+                    if (bearerToken != null) {
+                        java.util.Map<String, Object> body = new java.util.HashMap<>();
+                        body.put("quantity", newQuantity);
+                        apiCartService.updateCartItem(bearerToken, item.getId(), body).enqueue(new Callback<Item>() {
+                            @Override
+                            public void onResponse(Call<Item> call, Response<Item> response) {
+                                if (response.isSuccessful() && response.body() != null) {
+                                    // Update local cart manager
+                                    cartManager.updateQuantity(position, newQuantity);
+                                    notifyItemChanged(position);
+                                    calculateTotal();
+                                } else {
+                                    Toast.makeText(context, "Cập nhật số lượng thất bại", Toast.LENGTH_SHORT).show();
+                                }
+                            }
+
+                            @Override
+                            public void onFailure(Call<Item> call, Throwable t) {
+                                Toast.makeText(context, "Lỗi kết nối", Toast.LENGTH_SHORT).show();
+                            }
+                        });
+                    } else {
+                        notifyItemChanged(position);
+                        calculateTotal();
+                    }
                 } else {
                     // Nếu số lượng là 1 mà bấm giảm thì hỏi người dùng có muốn xóa không
                     cartManager.removeFromCart(position);
@@ -177,6 +268,19 @@ public class CartFragment extends Fragment {
                     notifyItemRemoved(position);
                     notifyItemRangeChanged(position, items.size());
                     calculateTotal();
+                    if (bearerToken != null) {
+                        apiCartService.removeCartItem(bearerToken, item.getId()).enqueue(new Callback<Void>() {
+                            @Override
+                            public void onResponse(Call<Void> call, Response<Void> response) {
+                                // Xử lý khi xóa thành công nếu cần thiết
+                            }
+
+                            @Override
+                            public void onFailure(Call<Void> call, Throwable t) {
+                                Toast.makeText(context, "Lỗi kết nối", Toast.LENGTH_SHORT).show();
+                            }
+                        });
+                    }
                 }
             });
 
@@ -186,6 +290,19 @@ public class CartFragment extends Fragment {
                 notifyItemRemoved(position);
                 notifyItemRangeChanged(position, items.size());
                 calculateTotal();
+                if (bearerToken != null) {
+                    apiCartService.removeCartItem(bearerToken, item.getId()).enqueue(new Callback<Void>() {
+                        @Override
+                        public void onResponse(Call<Void> call, Response<Void> response) {
+                            // Xử lý khi xóa thành công nếu cần thiết
+                        }
+
+                        @Override
+                        public void onFailure(Call<Void> call, Throwable t) {
+                            Toast.makeText(context, "Lỗi kết nối", Toast.LENGTH_SHORT).show();
+                        }
+                    });
+                }
             });
         }
 

@@ -4,18 +4,18 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:layout_margin="8dp"
+    android:clickable="false"
+    android:focusable="false"
     app:cardCornerRadius="12dp"
     app:cardUseCompatPadding="true"
-    app:strokeWidth="1dp"
     app:strokeColor="@color/purple_200"
-    android:clickable="false"
-    android:focusable="false">
+    app:strokeWidth="1dp">
 
     <RelativeLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:descendantFocusability="afterDescendants"
         android:clickable="false"
+        android:descendantFocusability="afterDescendants"
         android:focusable="false"
         android:padding="12dp">
 
@@ -23,26 +23,26 @@
             android:id="@+id/product_image"
             android:layout_width="88dp"
             android:layout_height="88dp"
+            android:contentDescription="@string/default_product_name"
             android:scaleType="centerCrop"
-            android:src="@drawable/ic_launcher_background"
-            android:contentDescription="@string/default_product_name" />
+            android:src="@drawable/ic_launcher_background" />
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_toEndOf="@id/product_image"
             android:layout_marginStart="12dp"
+            android:layout_toEndOf="@id/product_image"
             android:orientation="vertical">
 
             <TextView
                 android:id="@+id/product_name"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="@string/default_product_name"
-                android:textStyle="bold"
-                android:textAppearance="@style/TextAppearance.AppCompat.Medium"
+                android:ellipsize="end"
                 android:maxLines="2"
-                android:ellipsize="end" />
+                android:text="@string/default_product_name"
+                android:textAppearance="@style/TextAppearance.AppCompat.Medium"
+                android:textStyle="bold" />
 
             <TextView
                 android:id="@+id/product_price"
@@ -62,33 +62,30 @@
                 android:textColor="@android:color/darker_gray" />
 
             <LinearLayout
-                android:layout_width="wrap_content"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:layout_marginStart="12dp"
                 android:layout_marginTop="8dp"
+                android:layout_toEndOf="@id/product_image"
+                android:gravity="end"
                 android:orientation="horizontal">
 
-                <Button
-                    android:id="@+id/btn_view_detail"
-                    style="@style/Widget.MaterialComponents.Button.TextButton"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="@string/continue_shopping" />
-
-                <!-- remove background ripple to avoid visible circular overlay when tapped -->
                 <ImageView
                     android:id="@+id/btn_remove"
                     android:layout_width="44dp"
                     android:layout_height="44dp"
+                    android:layout_gravity="end"
                     android:layout_marginStart="8dp"
                     android:background="@null"
                     android:clickable="true"
+                    android:contentDescription="@string/favorite"
                     android:focusable="true"
                     android:focusableInTouchMode="true"
-                    android:contentDescription="@string/favorite"
                     android:padding="8dp"
                     android:src="@drawable/ic_favorite_filled"
                     app:tint="@color/red_500" />
             </LinearLayout>
+
         </LinearLayout>
 
     </RelativeLayout>

@@ -64,9 +64,9 @@
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btn_add_to_cart"
             android:layout_width="wrap_content"
-            android:layout_height="36dp"
+            android:layout_height="40dp"
+            android:layout_marginTop="20dp"
             android:layout_alignParentEnd="true"
-            android:layout_marginTop="8dp"
             android:layout_marginEnd="8dp"
             android:backgroundTint="@color/md_theme_primary"
             android:insetLeft="8dp"
@@ -80,9 +80,10 @@
             android:id="@+id/wishlist_button"
             android:layout_width="@dimen/icon_size"
             android:layout_height="@dimen/icon_size"
+
             android:layout_below="@id/btn_add_to_cart"
             android:layout_alignParentEnd="true"
-            android:layout_marginTop="8dp"
+            android:layout_marginTop="15dp"
             android:layout_marginEnd="8dp"
             android:background="@drawable/bg_circle_heart"
             android:padding="8dp"

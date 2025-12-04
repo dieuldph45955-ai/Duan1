@@ -12,7 +12,8 @@ import retrofit2.http.POST;
 import retrofit2.http.PUT;
 import retrofit2.http.Path;
 import thanh.toan.duan1.model.Item;
-import thanh.toan.duan1.model.Order;
+import thanh.toan.duan1.model.OrderCreateResponse;
+import thanh.toan.duan1.request.OrderRequest;
 
 public interface apiCart {
 
@@ -27,9 +28,9 @@ public interface apiCart {
             @Body Map<String, Object> body
     );
 
-    // Cập nhật số lượng sản phẩm trong giỏ hàng
+    // Cập nhật số lượng sản phẩm trong giỏ hàng (returns updated Item)
     @PUT("cart/update/{itemId}")
-    Call<Map<String, Object>> updateCartItem(
+    Call<Item> updateCartItem(
             @Header("Authorization") String token,
             @Path("itemId") String itemId,
             @Body Map<String, Object> body
@@ -37,12 +38,12 @@ public interface apiCart {
 
     // Xóa sản phẩm khỏi giỏ hàng
     @DELETE("cart/remove/{itemId}")
-    Call<Map<String, Object>> removeCartItem(
+    Call<Void> removeCartItem(
             @Header("Authorization") String token,
             @Path("itemId") String itemId
     );
     
-    // Checkout (tạo đơn hàng từ giỏ hàng)
+    // Checkout (tạo đơn hàng từ giỏ hàng) - gửi OrderRequest và nhận OrderCreateResponse
     @POST("orders")
-    Call<Order> checkout(@Header("Authorization") String token);
+    Call<OrderCreateResponse> checkout(@Header("Authorization") String token, @Body OrderRequest body);
 }

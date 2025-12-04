@@ -21,11 +21,20 @@ public class Item {
         this.quantity = value;
     }
 
+    // keep older naming and add canonical getId()/setId()
     public String getID() {
         return id;
     }
 
     public void setID(String value) {
         this.id = value;
+    }
+
+    public String getId() {
+        return id;
+    }
+
+    public void setId(String id) {
+        this.id = id;
     }
 }

@@ -8,7 +8,7 @@
     <string name="wishlist_title">Danh sách yêu thích</string>
     <string name="wishlist_empty_title">Danh sách yêu thích trống</string>
     <string name="wishlist_empty_subtitle">Nhấn vào icon trái tim để lưu sản phẩm tại đây</string>
-    <string name="continue_shopping">Tiếp tục mua sắm</string>
+    <string name="continue_shopping">Tiến hành thanh toán</string>
     <string name="cart_title">Giỏ hàng</string>
     <string name="no_category">Không có danh mục</string>
     <string name="reviews_count">%d đánh giá</string>

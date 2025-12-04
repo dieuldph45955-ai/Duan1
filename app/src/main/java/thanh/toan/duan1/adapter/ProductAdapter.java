@@ -259,9 +259,8 @@ public class ProductAdapter extends RecyclerView.Adapter<ProductAdapter.ProductV
             if (showAddToCart) {
                 holder.btnAddToCart.setOnClickListener(v -> {
                     try {
-                        CartManager cm = new CartManager(context);
-                        cm.addToCart(product, 1);
-                        Toast.makeText(context, "Đã thêm vào giỏ hàng", Toast.LENGTH_SHORT).show();
+                        // Use CartHelper to try server sync when possible, fallback to local
+                        thanh.toan.duan1.utils.CartHelper.addToCart(context, product, 1);
                     } catch (Exception e) {
                         Toast.makeText(context, "Lỗi thêm vào giỏ: " + e.getMessage(), Toast.LENGTH_SHORT).show();
                     }
