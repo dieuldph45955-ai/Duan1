@@ -261,6 +261,8 @@ public class ProductAdapter extends RecyclerView.Adapter<ProductAdapter.ProductV
                     try {
                         // Use CartHelper to try server sync when possible, fallback to local
                         thanh.toan.duan1.utils.CartHelper.addToCart(context, product, 1);
+                        // Immediate user feedback when adding from product list
+                        try { Toast.makeText(context, "Đã thêm vào giỏ hàng", Toast.LENGTH_SHORT).show(); } catch (Exception ignored) {}
                     } catch (Exception e) {
                         Toast.makeText(context, "Lỗi thêm vào giỏ: " + e.getMessage(), Toast.LENGTH_SHORT).show();
                     }
