@@ -17,26 +17,24 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import com.google.android.material.textfield.TextInputEditText;
 
-import java.io.IOException;
-import java.text.NumberFormat;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 
-import okhttp3.ResponseBody;
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
-import thanh.toan.duan1.R;
-import thanh.toan.duan1.api.ApiService;
-import thanh.toan.duan1.api.apiOrder;
-import thanh.toan.duan1.api.apiProfile;
+import thanh.toan.duan1.model.Order;
 import thanh.toan.duan1.model.Item;
 import thanh.toan.duan1.model.OrderCreateResponse;
 import thanh.toan.duan1.model.User;
 import thanh.toan.duan1.request.OrderRequest;
 import thanh.toan.duan1.utils.CartManager;
+import thanh.toan.duan1.R;
+import thanh.toan.duan1.api.ApiService;
+import thanh.toan.duan1.api.apiOrder;
+import thanh.toan.duan1.api.apiProfile;
 
 public class CheckoutActivity extends AppCompatActivity {
 
@@ -108,8 +106,9 @@ public class CheckoutActivity extends AppCompatActivity {
                 total += item.getProduct().getPrice() * item.getQuantity();
             }
         }
-        NumberFormat nf = NumberFormat.getInstance(new Locale("vi", "VN"));
-        tvTotal.setText(nf.format(total) + " VND");
+        Locale locale = new Locale("vi", "VN");
+        String formattedTotal = String.format(locale, "%,d", (int) total) + " VND";
+        tvTotal.setText(formattedTotal);
     }
 
     private void confirmCheckout() {
@@ -142,9 +141,9 @@ public class CheckoutActivity extends AppCompatActivity {
     }
 
     private void processCheckout() {
-        String name = Objects.requireNonNull(etName.getText()).toString();
-        String phone = Objects.requireNonNull(etPhone.getText()).toString();
-        String address = Objects.requireNonNull(etAddress.getText()).toString();
+         String name = Objects.requireNonNull(etName.getText()).toString();
+         String phone = Objects.requireNonNull(etPhone.getText()).toString();
+         String address = Objects.requireNonNull(etAddress.getText()).toString();
 
         int selectedPaymentId = radioGroupPayment.getCheckedRadioButtonId();
         String paymentMethod = "COD";
@@ -177,33 +176,59 @@ public class CheckoutActivity extends AppCompatActivity {
         apiOrderService.createOrder("Bearer " + token, orderRequest).enqueue(new Callback<OrderCreateResponse>() {
             @Override
             public void onResponse(Call<OrderCreateResponse> call, Response<OrderCreateResponse> response) {
-                if (response.isSuccessful()) {
-                    // Xóa giỏ hàng sau khi đặt thành công
+                if (response.isSuccessful() && response.body() != null) {
+                    OrderCreateResponse created = response.body();
                     cartManager.clearCart();
-                    Log.d("Checkout", "Order success, navigating to success screen");
+                    Log.d("Checkout", "Order created, id=" + created.getId() + " code=" + created.getCode());
 
-                    // Start OrderSuccessActivity and ask it to auto-open MyOrders
-                    Intent intent = new Intent(CheckoutActivity.this, OrderSuccessActivity.class);
-                    intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
-                    if (response.body() != null && response.body().getId() != null) {
-                        intent.putExtra("orderId", response.body().getId());
+                    final String createdId = created.getId();
+                    // fetch authoritative Order (full object) to get display code or other details
+                    if (createdId != null) {
+                        apiOrderService.getOrderById("Bearer " + token, createdId).enqueue(new Callback<Order>() {
+                            @Override
+                            public void onResponse(Call<Order> call, Response<Order> resp) {
+                                String send = null;
+                                if (resp.isSuccessful() && resp.body() != null) {
+                                    Order srv = resp.body();
+                                    if (srv.getDisplayCode() != null && !srv.getDisplayCode().isEmpty()) send = srv.getDisplayCode();
+                                }
+                                if (send == null) send = (created.getCode() != null && !created.getCode().isEmpty()) ? created.getCode() : createdId;
+                                Intent intent = new Intent(CheckoutActivity.this, OrderSuccessActivity.class);
+                                intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
+                                if (send != null) intent.putExtra("orderId", send);
+                                intent.putExtra("openOrders", true);
+                                startActivity(intent);
+                                finish();
+                            }
+
+                            @Override
+                            public void onFailure(Call<Order> call, Throwable t) {
+                                String fallback = (created.getCode() != null && !created.getCode().isEmpty()) ? created.getCode() : createdId;
+                                Intent intent = new Intent(CheckoutActivity.this, OrderSuccessActivity.class);
+                                intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
+                                if (fallback != null) intent.putExtra("orderId", fallback);
+                                intent.putExtra("openOrders", true);
+                                startActivity(intent);
+                                finish();
+                            }
+                        });
+                    } else {
+                        String fallback = (created.getCode() != null && !created.getCode().isEmpty()) ? created.getCode() : null;
+                        Intent intent = new Intent(CheckoutActivity.this, OrderSuccessActivity.class);
+                        intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
+                        if (fallback != null) intent.putExtra("orderId", fallback);
+                        intent.putExtra("openOrders", true);
+                        startActivity(intent);
+                        finish();
                     }
-                    intent.putExtra("openOrders", true);
-                    startActivity(intent);
-                    finish();
-
                 } else {
                     String errorBody = "";
-                    try (ResponseBody errorResponse = response.errorBody()) {
-                        if (errorResponse != null) {
-                            errorBody = errorResponse.string();
-                        }
-                    } catch (IOException e) {
-                        Log.e("CheckoutError", "Error reading error body", e);
+                    try {
+                        if (response.errorBody() != null) errorBody = response.errorBody().string();
+                    } catch (Exception e) {
+                        Log.e("CheckoutError", "read error body", e);
                     }
-                    
-                    Log.e("CheckoutError", "Code: " + response.code() + ", Body: " + errorBody);
-                    
+                    Log.e("CheckoutError", "Create order failed: " + response.code() + " " + errorBody);
                     new AlertDialog.Builder(CheckoutActivity.this)
                             .setTitle("Đặt hàng thất bại")
                             .setMessage("Lỗi server: " + response.code() + "\n" + errorBody)
@@ -218,5 +243,16 @@ public class CheckoutActivity extends AppCompatActivity {
                 Log.e("CheckoutError", "Network error", t);
             }
         });
+    }
+
+    // produce 8-char short code like '6932f314' matching OrderAdapter behavior
+    private static String normalizeShortCode(String code, String id) {
+        if (id != null && id.length() >= 8) return id.substring(0, 8).toLowerCase();
+        if (code != null && code.length() >= 8) return code.substring(0, 8).toLowerCase();
+        String seed = (id != null && !id.isEmpty()) ? id : (code != null ? code : "");
+        int h = Math.abs(seed.hashCode());
+        String hex = Integer.toHexString(h);
+        if (hex.length() < 8) hex = String.format(java.util.Locale.getDefault(), "%8s", hex).replace(' ', '0');
+        return hex.substring(hex.length() - 8).toLowerCase();
     }
 }

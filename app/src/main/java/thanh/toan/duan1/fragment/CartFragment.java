@@ -1,9 +1,13 @@
 package thanh.toan.duan1.fragment;
 
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.SharedPreferences;
+import android.os.Build;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -37,6 +41,7 @@ import thanh.toan.duan1.model.Order;
 import thanh.toan.duan1.model.Product;
 import thanh.toan.duan1.request.OrderRequest;
 import thanh.toan.duan1.ui.CheckoutActivity;
+import thanh.toan.duan1.utils.CartHelper;
 import thanh.toan.duan1.utils.CartManager;
 
 public class CartFragment extends Fragment {
@@ -49,6 +54,10 @@ public class CartFragment extends Fragment {
     private List<Item> cartItems;
     private apiCart apiCartService;
     private String bearerToken;
+
+    private BroadcastReceiver cartUpdatedReceiver;
+
+    private static final String TAG = "CartFragment";
 
     @Nullable
     @Override
@@ -89,6 +98,14 @@ public class CartFragment extends Fragment {
             startActivity(intent);
         });
 
+        // Create receiver to refresh UI when cart updated locally
+        cartUpdatedReceiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                refreshLocalCart();
+            }
+        };
+
         return view;
     }
 
@@ -124,6 +141,25 @@ public class CartFragment extends Fragment {
     @Override
     public void onResume() {
         super.onResume();
+        // Register receiver
+        if (getContext() != null) {
+            IntentFilter filter = new IntentFilter(CartHelper.ACTION_CART_UPDATED);
+            try {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    getContext().registerReceiver(cartUpdatedReceiver, filter, Context.RECEIVER_NOT_EXPORTED);
+                } else {
+                    getContext().registerReceiver(cartUpdatedReceiver, filter);
+                }
+            } catch (SecurityException e) {
+                // Last-resort: attempt without flags if newer signature fails (graceful fallback)
+                try {
+                    getContext().registerReceiver(cartUpdatedReceiver, filter);
+                } catch (Exception ex) {
+                    Log.e(TAG, "Failed to register cartUpdatedReceiver", ex);
+                }
+            }
+        }
+
         // Refresh cart data when returning to this screen
         if (bearerToken != null && apiCartService != null) {
             fetchCartFromServer();
@@ -135,6 +171,30 @@ public class CartFragment extends Fragment {
             }
             calculateTotal();
         }
+    }
+
+    @Override
+    public void onPause() {
+        super.onPause();
+        try {
+            if (getContext() != null && cartUpdatedReceiver != null) getContext().unregisterReceiver(cartUpdatedReceiver);
+        } catch (Exception ignored) {}
+    }
+
+    private void refreshLocalCart() {
+        if (cartManager == null) return;
+        cartItems.clear();
+        cartItems.addAll(cartManager.getCart());
+        if (adapter != null) adapter.notifyDataSetChanged();
+        calculateTotal();
+    }
+
+    @Override
+    public void onDestroyView() {
+        try {
+            if (getContext() != null && cartUpdatedReceiver != null) getContext().unregisterReceiver(cartUpdatedReceiver);
+        } catch (Exception ignored) {}
+        super.onDestroyView();
     }
 
     private void calculateTotal() {
@@ -200,84 +260,103 @@ public class CartFragment extends Fragment {
             holder.quantity.setText(String.valueOf(item.getQuantity()));
 
             holder.increaseButton.setOnClickListener(v -> {
-                int newQuantity = item.getQuantity().intValue() + 1;
-                item.setQuantity((long) newQuantity);
-                cartManager.updateQuantity(position, newQuantity);
+                // Capture the item reference and current adapter position safely
+                Item currentItem = item;
+                int newQuantity = currentItem.getQuantity().intValue() + 1;
+                // Update UI & local storage immediately
+                currentItem.setQuantity((long) newQuantity);
+                int idx = items.indexOf(currentItem);
+                if (idx >= 0) cartManager.updateQuantity(idx, newQuantity);
+                holder.quantity.setText(String.valueOf(newQuantity));
+                calculateTotal();
+
                 if (bearerToken != null) {
                     java.util.Map<String, Object> body = new java.util.HashMap<>();
                     body.put("quantity", newQuantity);
-                    apiCartService.updateCartItem(bearerToken, item.getId(), body).enqueue(new Callback<Item>() {
+                    apiCartService.updateCartItem(bearerToken, currentItem.getId(), body).enqueue(new Callback<Item>() {
                         @Override
                         public void onResponse(Call<Item> call, Response<Item> response) {
                             if (response.isSuccessful() && response.body() != null) {
-                                // Update local cart manager
-                                cartManager.updateQuantity(position, newQuantity);
-                                notifyItemChanged(position);
+                                // server returned updated item - sync if necessary
+                                Item updated = response.body();
+                                if (updated.getQuantity() != null) {
+                                    currentItem.setQuantity(updated.getQuantity());
+                                    int idx2 = items.indexOf(currentItem);
+                                    if (idx2 >= 0) cartManager.updateQuantity(idx2, updated.getQuantity().intValue());
+                                }
+                                int bindPos = holder.getAdapterPosition();
+                                if (bindPos != RecyclerView.NO_POSITION) notifyItemChanged(bindPos);
                                 calculateTotal();
                             } else {
-                                Toast.makeText(context, "Cập nhật số lượng thất bại", Toast.LENGTH_SHORT).show();
+                                Log.e(TAG, "updateCartItem failed code=" + response.code());
                             }
                         }
 
                         @Override
                         public void onFailure(Call<Item> call, Throwable t) {
-                            Toast.makeText(context, "Lỗi kết nối", Toast.LENGTH_SHORT).show();
+                            // Don't show intrusive toast; log for debugging instead
+                            Log.e(TAG, "updateCartItem network failure", t);
                         }
                     });
-                } else {
-                    notifyItemChanged(position);
-                    calculateTotal();
                 }
             });
 
             holder.decreaseButton.setOnClickListener(v -> {
-                int currentQuantity = item.getQuantity().intValue();
+                Item currentItem = item;
+                int currentQuantity = currentItem.getQuantity().intValue();
                 if (currentQuantity > 1) {
                     int newQuantity = currentQuantity - 1;
-                    item.setQuantity((long) newQuantity);
-                    cartManager.updateQuantity(position, newQuantity);
+                    // Update UI & local storage immediately
+                    currentItem.setQuantity((long) newQuantity);
+                    int idx = items.indexOf(currentItem);
+                    if (idx >= 0) cartManager.updateQuantity(idx, newQuantity);
+                    holder.quantity.setText(String.valueOf(newQuantity));
+                    calculateTotal();
+
                     if (bearerToken != null) {
                         java.util.Map<String, Object> body = new java.util.HashMap<>();
                         body.put("quantity", newQuantity);
-                        apiCartService.updateCartItem(bearerToken, item.getId(), body).enqueue(new Callback<Item>() {
+                        apiCartService.updateCartItem(bearerToken, currentItem.getId(), body).enqueue(new Callback<Item>() {
                             @Override
                             public void onResponse(Call<Item> call, Response<Item> response) {
                                 if (response.isSuccessful() && response.body() != null) {
-                                    // Update local cart manager
-                                    cartManager.updateQuantity(position, newQuantity);
-                                    notifyItemChanged(position);
+                                    Item updated = response.body();
+                                    if (updated.getQuantity() != null) {
+                                        currentItem.setQuantity(updated.getQuantity());
+                                        int idx2 = items.indexOf(currentItem);
+                                        if (idx2 >= 0) cartManager.updateQuantity(idx2, updated.getQuantity().intValue());
+                                    }
+                                    int bindPos = holder.getAdapterPosition();
+                                    if (bindPos != RecyclerView.NO_POSITION) notifyItemChanged(bindPos);
                                     calculateTotal();
                                 } else {
-                                    Toast.makeText(context, "Cập nhật số lượng thất bại", Toast.LENGTH_SHORT).show();
+                                    Log.e(TAG, "updateCartItem failed code=" + response.code());
                                 }
                             }
 
                             @Override
                             public void onFailure(Call<Item> call, Throwable t) {
-                                Toast.makeText(context, "Lỗi kết nối", Toast.LENGTH_SHORT).show();
+                                Log.e(TAG, "updateCartItem network failure", t);
                             }
                         });
-                    } else {
-                        notifyItemChanged(position);
-                        calculateTotal();
                     }
                 } else {
                     // Nếu số lượng là 1 mà bấm giảm thì hỏi người dùng có muốn xóa không
-                    cartManager.removeFromCart(position);
-                    items.remove(position);
-                    notifyItemRemoved(position);
-                    notifyItemRangeChanged(position, items.size());
+                    int idx = items.indexOf(currentItem);
+                    if (idx >= 0) cartManager.removeFromCart(idx);
+                    items.remove(currentItem);
+                    notifyDataSetChanged();
                     calculateTotal();
                     if (bearerToken != null) {
-                        apiCartService.removeCartItem(bearerToken, item.getId()).enqueue(new Callback<Void>() {
+                        apiCartService.removeCartItem(bearerToken, currentItem.getId()).enqueue(new Callback<Void>() {
                             @Override
                             public void onResponse(Call<Void> call, Response<Void> response) {
-                                // Xử lý khi xóa thành công nếu cần thiết
+                                // handled silently
                             }
 
                             @Override
                             public void onFailure(Call<Void> call, Throwable t) {
-                                Toast.makeText(context, "Lỗi kết nối", Toast.LENGTH_SHORT).show();
+                                Log.e(TAG, "removeCartItem network failure", t);
                             }
                         });
                     }
@@ -285,21 +364,21 @@ public class CartFragment extends Fragment {
             });
 
             holder.removeButton.setOnClickListener(v -> {
-                cartManager.removeFromCart(position);
-                items.remove(position);
-                notifyItemRemoved(position);
-                notifyItemRangeChanged(position, items.size());
+                int idx = items.indexOf(item);
+                if (idx >= 0) cartManager.removeFromCart(idx);
+                items.remove(item);
+                notifyDataSetChanged();
                 calculateTotal();
                 if (bearerToken != null) {
                     apiCartService.removeCartItem(bearerToken, item.getId()).enqueue(new Callback<Void>() {
                         @Override
                         public void onResponse(Call<Void> call, Response<Void> response) {
-                            // Xử lý khi xóa thành công nếu cần thiết
+                            // handled silently
                         }
 
                         @Override
                         public void onFailure(Call<Void> call, Throwable t) {
-                            Toast.makeText(context, "Lỗi kết nối", Toast.LENGTH_SHORT).show();
+                            Log.e(TAG, "removeCartItem network failure", t);
                         }
                     });
                 }
