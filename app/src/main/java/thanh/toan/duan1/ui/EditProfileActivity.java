@@ -5,6 +5,7 @@ import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ImageButton;
 import android.widget.ProgressBar;
 import android.widget.Toast;
 
@@ -27,6 +28,7 @@ public class EditProfileActivity extends AppCompatActivity {
     private EditText edtFullName, edtEmail, edtPhone, edtAddress, edtPassword;
     private Button btnSave;
     private ProgressBar progressBar;
+    private ImageButton btnBack;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -42,6 +44,12 @@ public class EditProfileActivity extends AppCompatActivity {
         edtPassword = findViewById(R.id.edt_password);
         edtEmail.setEnabled(false); // email cannot be changed via this endpoint
         btnSave = findViewById(R.id.btn_save_profile);
+
+        // wire back button (added in layout)
+        btnBack = findViewById(R.id.btn_back_profile);
+        if (btnBack != null) {
+            btnBack.setOnClickListener(v -> finish());
+        }
 
         progressBar = new ProgressBar(this);
         // load current profile
