@@ -59,10 +59,12 @@ public class MyOrdersActivity extends AppCompatActivity implements OrderAdapter.
         btnBack = findViewById(R.id.btn_back);
         if (btnBack != null) {
             btnBack.setOnClickListener(v -> {
-                // Navigate back to MainActivity and open Profile (Settings)
+                // Navigate back to MainActivity and open Home (default)
                 android.content.Intent intent = new android.content.Intent(MyOrdersActivity.this, MainActivity.class);
                 intent.setFlags(android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP | android.content.Intent.FLAG_ACTIVITY_NEW_TASK);
-                intent.putExtra("openProfile", true);
+                // Do not request opening profile; default MainActivity will show HomeFragment
+                // If you need to programmatically select Home tab, we could add an extra like openHome, but
+                // MainActivity defaults to Home when no extras are provided.
                 startActivity(intent);
                 finish();
             });
@@ -71,7 +73,7 @@ public class MyOrdersActivity extends AppCompatActivity implements OrderAdapter.
         // If activity was started with an orderId (optional), we can scroll to it later
         String startedOrderId = getIntent().getStringExtra("orderId");
         if (startedOrderId != null) {
-            // optionally store and scroll after fetch
+            // nothing to do now; we'll normalize after fetch when comparing
         }
 
         fetchMyOrders();
@@ -100,13 +102,55 @@ public class MyOrdersActivity extends AppCompatActivity implements OrderAdapter.
                     Set<String> deletedIds = getDeletedOrders();
                     for (Order order : response.body()) {
                         if (order == null) continue;
-                        if (!deletedIds.contains(order.getID())) {
-                            orderList.add(order);
-                        }
+                        String rawCode = order.getCode();
+                        String displayCode = order.getDisplayCode();
+                        String oid = order.getID();
+                        boolean isDeleted = false;
+                        // check id, raw code, and display code (exact matches)
+                        if (oid != null && deletedIds.contains(oid)) isDeleted = true;
+                        if (rawCode != null && deletedIds.contains(rawCode)) isDeleted = true;
+                        if (displayCode != null && deletedIds.contains(displayCode)) isDeleted = true;
+                        // fallback: short-code variant
+                        String shortc = normalizeShortCode(rawCode, oid);
+                        if (shortc != null && deletedIds.contains(shortc)) isDeleted = true;
+                        if (!isDeleted) orderList.add(order);
                     }
 
                     // Đảo ngược danh sách để đơn mới nhất lên đầu
-                    Collections.reverse(orderList);
+                    // server may not guarantee order; ensure the created order (if provided via intent) is first
+                    String createdOrderId = getIntent().getStringExtra("orderId");
+                    String createdOrderIdNorm = createdOrderId != null ? createdOrderId.toLowerCase(java.util.Locale.ROOT) : null;
+                    if (createdOrderId != null) {
+                         // find the order and move it to the front
+                         int found = -1;
+                         for (int i = 0; i < orderList.size(); i++) {
+                             Order o = orderList.get(i);
+                             if (o == null) continue;
+                             String oid = o.getID();
+                             String ocode = o.getCode();
+                             String display = o.getDisplayCode();
+                             // match by raw code or id or short-code
+                            String normalizedO = normalizeShortCode(ocode, oid);
+                            String normalizedRequested = normalizeShortCode(createdOrderIdNorm, createdOrderIdNorm);
+                            boolean matchById = (oid != null && oid.equals(createdOrderId));
+                            boolean matchByCode = (ocode != null && ocode.equalsIgnoreCase(createdOrderId));
+                            boolean matchByDisplay = (display != null && createdOrderIdNorm != null && display.equals(createdOrderIdNorm));
+                            boolean matchByShort = (normalizedO != null && normalizedRequested != null && normalizedO.equals(normalizedRequested));
+                            if (matchById || matchByCode || matchByDisplay || matchByShort) {
+                                 found = i;
+                                 break;
+                             }
+                         }
+                         if (found > 0) {
+                             Order created = orderList.remove(found);
+                             orderList.add(0, created);
+                         } else if (found == -1) {
+                             // Not found in response: we keep server order and optionally you could add a placeholder or fetch the order by id.
+                         }
+                     } else {
+                         // If no createdOrderId provided, keep newest first by reversing
+                         Collections.reverse(orderList);
+                     }
 
                     adapter.notifyDataSetChanged();
 
@@ -295,19 +339,43 @@ public class MyOrdersActivity extends AppCompatActivity implements OrderAdapter.
         });
     }
 
-    // Lưu ID đơn hàng đã xóa vào SharedPreferences
+    // Lưu ID đơn hàng đã xóa vào SharedPreferences (lưu dạng short code)
     private void saveDeletedOrder(String orderId) {
         SharedPreferences pref = getSharedPreferences("DeletedOrders", Context.MODE_PRIVATE);
         Set<String> deletedIds = pref.getStringSet("ids", new HashSet<>());
         Set<String> newDeletedIds = new HashSet<>(deletedIds);
-        newDeletedIds.add(orderId);
-        pref.edit().putStringSet("ids", newDeletedIds).apply();
+        if (orderId != null) {
+            // Save id/code/displayCode variants for robust matching with server/admin
+            newDeletedIds.add(orderId);
+            // If this order object exists locally, try to derive display variant and short-code
+            String shortc = normalizeShortCode(orderId, orderId);
+            if (shortc != null) newDeletedIds.add(shortc);
+            // Also attempt to save uppercase/lowercase variants to avoid mismatches (server may return different case)
+            newDeletedIds.add(orderId.toLowerCase(java.util.Locale.ROOT));
+            newDeletedIds.add(orderId.toUpperCase(java.util.Locale.ROOT));
+        }
+         pref.edit().putStringSet("ids", newDeletedIds).apply();
     }
 
     // Lấy danh sách ID đơn hàng đã xóa
     private Set<String> getDeletedOrders() {
         SharedPreferences pref = getSharedPreferences("DeletedOrders", Context.MODE_PRIVATE);
         return pref.getStringSet("ids", new HashSet<>());
+    }
+
+    private static String normalizeToNumeric(String code, String id) {
+        // replaced by normalizeShortCode below; kept for parity but not used
+        return normalizeShortCode(code, id);
+    }
+
+    private static String normalizeShortCode(String code, String id) {
+        if (id != null && id.length() >= 8) return id.substring(0, 8).toLowerCase();
+        if (code != null && code.length() >= 8) return code.substring(0, 8).toLowerCase();
+        String seed = (id != null && !id.isEmpty()) ? id : (code != null ? code : "");
+        int h = Math.abs(seed.hashCode());
+        String hex = Integer.toHexString(h);
+        if (hex.length() < 8) hex = String.format(java.util.Locale.getDefault(), "%8s", hex).replace(' ', '0');
+        return hex.substring(hex.length() - 8).toLowerCase();
     }
 
     @Override

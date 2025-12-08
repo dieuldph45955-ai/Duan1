@@ -13,17 +13,19 @@ import retrofit2.http.POST;
 import retrofit2.http.PUT;
 import retrofit2.http.Path;
 import thanh.toan.duan1.model.Order;
-import thanh.toan.duan1.model.OrderCreateResponse;
 import thanh.toan.duan1.request.OrderRequest;
+import thanh.toan.duan1.model.OrderCreateResponse;
 
 public interface apiOrder {
     // Tạo đơn hàng - sử dụng OrderCreateResponse để tránh lỗi parse JSON
     @POST("orders")
     Call<OrderCreateResponse> createOrder(@Header("Authorization") String token, @Body OrderRequest body);
-
     // Lấy đơn hàng của user
     @GET("orders/my-orders")
     Call<List<Order>> getMyOrders(@Header("Authorization") String token);
+
+    @GET("orders/{id}")
+    Call<Order> getOrderById(@Header("Authorization") String token, @Path("id") String id);
 
     // Lấy tất cả đơn hàng (admin)
     @GET("ordersAdmin")

@@ -25,11 +25,13 @@ public class OrderSuccessActivity extends AppCompatActivity {
 
         // If caller requested to open orders after success, show success screen briefly then open MyOrdersActivity
         boolean openOrders = getIntent().getBooleanExtra("openOrders", false);
+        final String createdOrderId = getIntent().getStringExtra("orderId");
         if (openOrders) {
             // show for 1.5 seconds then navigate to MyOrdersActivity
             new Handler(Looper.getMainLooper()).postDelayed(() -> {
                 Intent intent = new Intent(OrderSuccessActivity.this, MyOrdersActivity.class);
                 intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
+                if (createdOrderId != null) intent.putExtra("orderId", createdOrderId);
                 startActivity(intent);
                 finish();
             }, 1500);
@@ -39,6 +41,7 @@ public class OrderSuccessActivity extends AppCompatActivity {
         btnViewOrders.setOnClickListener(v -> {
             Intent intent = new Intent(OrderSuccessActivity.this, MyOrdersActivity.class);
             intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
+            if (createdOrderId != null) intent.putExtra("orderId", createdOrderId);
             startActivity(intent);
             finish();
         });

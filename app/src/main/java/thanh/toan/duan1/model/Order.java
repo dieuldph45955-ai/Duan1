@@ -11,6 +11,10 @@ import java.util.Map;
 public class Order {
     @SerializedName("_id")
     private String id;
+    // possible server-side code fields
+    private String code;
+    @SerializedName("orderCode")
+    private String orderCode;
     // user can be either a String id or an object; keep as Object to avoid parse errors
     private Object user;
     private List<OrderItem> items;
@@ -30,6 +34,15 @@ public class Order {
     public void setID(String value) {
         this.id = value;
     }
+
+    // New: return server-provided order code if present, else null
+    public String getCode() {
+        if (code != null && !code.isEmpty()) return code;
+        if (orderCode != null && !orderCode.isEmpty()) return orderCode;
+        return null;
+    }
+
+    public void setCode(String value) { this.code = value; }
 
     // raw user object (may be String id, Map or User)
     public Object getUserRaw() {
@@ -149,5 +162,18 @@ public class Order {
 
     public void setV(Long value) {
         this.v = value;
+    }
+    public String getDisplayCode() {
+        if (code != null && !code.isEmpty()) {
+            return code.toLowerCase(java.util.Locale.ROOT);
+        }
+        if (orderCode != null && !orderCode.isEmpty()) {
+            return orderCode.toLowerCase(java.util.Locale.ROOT);
+        }
+        // Fallback: nếu server không gửi code, dùng 8 ký tự đầu của ID in lowercase
+        if (id != null && id.length() >= 8) {
+            return id.substring(0, 8).toLowerCase(java.util.Locale.ROOT);
+        }
+        return id != null ? id.toLowerCase(java.util.Locale.ROOT) : "";
     }
 }

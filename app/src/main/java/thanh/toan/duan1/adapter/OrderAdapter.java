@@ -48,42 +48,44 @@ public class OrderAdapter extends RecyclerView.Adapter<OrderAdapter.OrderViewHol
     public void onBindViewHolder(@NonNull OrderViewHolder holder, int position) {
         Order order = orderList.get(position);
 
-        String orderId = order.getID() != null && order.getID().length() >= 8 
-                ? order.getID().substring(0, 8).toUpperCase() 
-                : order.getID();
-        holder.tvOrderId.setText("Mã đơn: " + orderId);
-        
+        // Use model helper to get a canonical display code (server code if present, else fallback)
+        String displayCode = order.getDisplayCode();
+        holder.tvOrderId.setText(String.format(java.util.Locale.getDefault(), "Mã đơn: %s", displayCode));
+
         String status = order.getStatus();
         if (status == null) status = "";
-        
-        holder.tvStatus.setText(status);
-        
-        // Reset trạng thái nút
+
+        // Map raw status to display label (Vietnamese)
+        String displayStatus = mapStatusToLabel(status);
+        holder.tvStatus.setText(displayStatus);
+
+        // Reset button state
         holder.btnCancel.setVisibility(View.GONE);
         holder.btnCancel.setText("Hủy đơn");
         holder.btnCancel.setOnClickListener(null);
 
         String lowerStatus = status.toLowerCase().trim();
 
-        if (lowerStatus.equals("pending") || lowerStatus.equals("chờ xác nhận")) {
+        if (lowerStatus.contains("pending") || lowerStatus.contains("confirm") || lowerStatus.contains("chờ")) {
             holder.tvStatus.setTextColor(Color.parseColor("#FF9800")); // Cam
             holder.tvStatus.setBackgroundResource(R.drawable.bg_status_pending);
-            
+
+            // allow cancelling by owner
             holder.btnCancel.setVisibility(View.VISIBLE);
             holder.btnCancel.setText("Hủy đơn");
             holder.btnCancel.setOnClickListener(v -> {
                 if (listener != null) listener.onCancelOrder(order);
             });
 
-        } else if (lowerStatus.equals("completed") || lowerStatus.equals("giao hàng thành công")) {
+        } else if (lowerStatus.contains("delivered") || lowerStatus.contains("giao") || lowerStatus.contains("completed") || lowerStatus.contains("done")) {
             holder.tvStatus.setTextColor(Color.parseColor("#4CAF50")); // Xanh lá
             holder.tvStatus.setBackgroundResource(android.R.color.transparent);
-            
-        } else if (lowerStatus.equals("cancelled") || lowerStatus.equals("canceled") || lowerStatus.equals("đã hủy")) {
+
+        } else if (lowerStatus.contains("cancel") || lowerStatus.contains("hủy") || lowerStatus.contains("canceled")) {
             holder.tvStatus.setTextColor(Color.parseColor("#F44336")); // Đỏ
             holder.tvStatus.setBackgroundResource(android.R.color.transparent);
-            
-            // Hiển thị nút Xóa cho đơn đã hủy
+
+            // Show delete for cancelled orders
             holder.btnCancel.setVisibility(View.VISIBLE);
             holder.btnCancel.setText("Xóa đơn");
             holder.btnCancel.setOnClickListener(v -> {
@@ -105,7 +107,7 @@ public class OrderAdapter extends RecyclerView.Adapter<OrderAdapter.OrderViewHol
         // Tổng tiền
         NumberFormat vn = NumberFormat.getInstance(new Locale("vi", "VN"));
         Long total = order.getTotalPrice();
-        holder.tvTotal.setText(vn.format(total != null ? total : 0) + " đ");
+        holder.tvTotal.setText(String.format(java.util.Locale.getDefault(), "%s đ", vn.format(total != null ? total : 0)));
 
         // Tóm tắt sản phẩm - handle OrderItem which has flexible product type
         StringBuilder summary = new StringBuilder();
@@ -114,6 +116,7 @@ public class OrderAdapter extends RecyclerView.Adapter<OrderAdapter.OrderViewHol
                 if (item == null) continue;
                 String prodName = item.getProductName();
                 long qty = item.getQuantity() != null ? item.getQuantity() : 0L;
+                if (prodName == null) prodName = "Sản phẩm";
                 summary.append("- ").append(prodName).append(" x").append(qty).append("\n");
             }
         }
@@ -122,7 +125,20 @@ public class OrderAdapter extends RecyclerView.Adapter<OrderAdapter.OrderViewHol
 
     @Override
     public int getItemCount() {
-        return orderList.size();
+        return orderList != null ? orderList.size() : 0;
+    }
+
+    private String mapStatusToLabel(String status) {
+        if (status == null) return "";
+        String s = status.toLowerCase();
+        if (s.contains("pending") || s.contains("chờ")) return "Chờ xử lý";
+        if (s.contains("confirm")) return "Đã xác nhận";
+        if (s.contains("ship") || s.contains("shipping")) return "Đang giao";
+        if (s.contains("deliver") || s.contains("delivered") || s.contains("giao")) return "Đã giao";
+        if (s.contains("cancel" )|| s.contains("hủy")) return "Đã hủy";
+        // else return original but capitalized
+        if (!status.isEmpty()) return status.substring(0,1).toUpperCase() + status.substring(1);
+        return status;
     }
 
     public static class OrderViewHolder extends RecyclerView.ViewHolder {
