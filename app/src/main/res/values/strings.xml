@@ -3,6 +3,7 @@
     <string name="favorite">Yêu thích</string>
     <string name="my_orders_title">Đơn hàng của tôi</string>
     <string name="back">Quay lại</string>
+    <string name="edit_profile_title">Chỉnh sửa hồ sơ</string>
 
     <!-- Wishlist strings -->
     <string name="wishlist_title">Danh sách yêu thích</string>
@@ -24,6 +25,7 @@
 
     <!-- Home/Profile strings -->
     <string name="home_title">Danh sách sản phẩm</string>
+    <string name="banner">Quảng cáo</string>
     <string name="user_name">User Name</string>
     <string name="user_email">user.email@example.com</string>
     <string name="add">Thêm</string>
@@ -35,4 +37,12 @@
     <string name="edit_profile_address_hint">Địa chỉ</string>
     <string name="edit_profile_new_password_hint">Mật khẩu mới (để trống để giữ nguyên)</string>
     <string name="save">Lưu</string>
+
+    <!-- Product detail strings -->
+    <string name="product_details_title">Chi tiết sản phẩm</string>
+    <string name="product_size_label">Kích thước</string>
+    <string name="choose_size">Chọn kích thước</string>
+    <string name="no_size">Không có size</string>
+    <string name="add_to_cart">Thêm vào giỏ</string>
+    <string name="product_description_placeholder">Mô tả sản phẩm</string>
 </resources>

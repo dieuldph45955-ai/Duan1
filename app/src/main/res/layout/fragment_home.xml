@@ -10,7 +10,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:background="@color/md_theme_surface"
-        android:title="Danh sách sản phẩm"
+        android:title="@string/home_title"
         android:titleTextColor="@color/md_theme_onSurface"
         app:popupTheme="@style/ThemeOverlay.MaterialComponents.Light" />
 
@@ -21,6 +21,16 @@
         android:layout_marginTop="?attr/actionBarSize"
         android:paddingStart="16dp"
         android:paddingEnd="16dp">
+
+        <!-- Banner area: single ImageView for product banner -->
+        <ImageView
+            android:id="@+id/home_banner"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:adjustViewBounds="true"
+            android:scaleType="fitCenter"
+            android:contentDescription="@string/home_title"
+            android:src="@drawable/banner" />
 
         <androidx.appcompat.widget.SearchView
             android:id="@+id/search_view"

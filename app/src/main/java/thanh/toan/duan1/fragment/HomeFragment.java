@@ -24,6 +24,9 @@ import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.google.android.material.tabs.TabLayout;
+import com.google.android.material.tabs.TabLayoutMediator;
+
 import java.text.Normalizer;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -35,6 +38,7 @@ import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
 import thanh.toan.duan1.R;
+import thanh.toan.duan1.adapter.BannerAdapter;
 import thanh.toan.duan1.adapter.ProductAdapter;
 import thanh.toan.duan1.api.ApiService;
 import thanh.toan.duan1.api.ApiCategories;
@@ -60,6 +64,9 @@ public class HomeFragment extends Fragment {
 
     private BroadcastReceiver wishlistReceiver;
 
+    // Banner ImageView
+    private android.widget.ImageView bannerView;
+
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
@@ -70,16 +77,24 @@ public class HomeFragment extends Fragment {
         searchView = view.findViewById(R.id.search_view);
         categorySpinner = view.findViewById(R.id.category_spinner);
 
+        // banner view
+        bannerView = view.findViewById(R.id.home_banner);
+
         // load token from SharedPreferences
         SharedPreferences prefs = requireContext().getSharedPreferences("MyAppPrefs", Context.MODE_PRIVATE);
         token = prefs.getString("token", null);
 
         if (productsRecyclerView != null) {
-            productsRecyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
-            Log.d(TAG, "RecyclerView initialized");
+            // Use grid with 2 columns for a modern look
+            androidx.recyclerview.widget.GridLayoutManager glm = new androidx.recyclerview.widget.GridLayoutManager(getContext(), 2);
+            productsRecyclerView.setLayoutManager(glm);
+            productsRecyclerView.setHasFixedSize(true);
+            Log.d(TAG, "RecyclerView initialized as 2-column grid");
         } else {
             Log.e(TAG, "RecyclerView is null!");
         }
+
+        setupBannerImage();
 
         // no touch listener: use spinnerInitialized to ignore the first automatic onItemSelected
 
@@ -89,6 +104,26 @@ public class HomeFragment extends Fragment {
         loadCategories(); // fetch categories and then load products
 
         return view;
+    }
+
+    private void setupBannerImage() {
+        // Try to load a drawable named 'polo' (e.g., polo.jpg placed in res/drawable)
+        try {
+            int poloId = getResources().getIdentifier("banner", "drawable", requireContext().getPackageName());
+            if (poloId != 0) {
+                bannerView.setImageResource(poloId);
+            } else {
+                // fallback to placeholder
+                bannerView.setImageResource(R.drawable.banner_1);
+            }
+        } catch (Exception ignored) {
+            try { bannerView.setImageResource(R.drawable.banner_1); } catch (Exception e) {}
+        }
+    }
+
+    @Override
+    public void onDestroyView() {
+        super.onDestroyView();
     }
 
     @Override
@@ -184,15 +219,14 @@ public class HomeFragment extends Fragment {
     }
 
     private void loadCategories() {
-        // create service explicitly with fully-qualified types to avoid analyzer issues
-        thanh.toan.duan1.api.ApiCategories catService = ApiService.getApi(requireContext())
-                .create(thanh.toan.duan1.api.ApiCategories.class);
+        // create service explicitly
+        ApiCategories catService = ApiService.getApi(requireContext()).create(ApiCategories.class);
 
-        retrofit2.Call<java.util.List<thanh.toan.duan1.model.Category>> catCall = catService.getCategories();
+        retrofit2.Call<java.util.List<Category>> catCall = catService.getCategories();
 
-        catCall.enqueue(new retrofit2.Callback<java.util.List<thanh.toan.duan1.model.Category>>() {
+        catCall.enqueue(new retrofit2.Callback<java.util.List<Category>>() {
             @Override
-            public void onResponse(@NonNull retrofit2.Call<java.util.List<thanh.toan.duan1.model.Category>> call, @NonNull retrofit2.Response<java.util.List<thanh.toan.duan1.model.Category>> response) {
+            public void onResponse(@NonNull retrofit2.Call<java.util.List<Category>> call, @NonNull retrofit2.Response<java.util.List<Category>> response) {
                 if (response.isSuccessful() && response.body() != null) {
                     categories.clear();
                     categories.addAll(response.body());
